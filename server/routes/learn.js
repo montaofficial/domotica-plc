@@ -12,6 +12,15 @@ const thresholdSchema = z.object({
   threshold: z.number().min(0.1).max(0.95).optional()
 });
 
+const echoFilterSchema = z.object({
+  enabled: z.boolean()
+});
+
+const startLearnSchema = z.object({
+  threshold: z.number().min(0.1).max(0.95).optional(),
+  echoFilter: z.boolean().optional()
+});
+
 const dstSchema = z.object({
   dst: z.string().min(1).max(64)
 });
@@ -70,13 +79,18 @@ router.post('/baseline/exclude', withZod(dstSchema, (req, res, body) => {
 }));
 
 // POST /api/learn/start — enter Learn mode
-router.post('/start', withZod(thresholdSchema, (req, res, body) => {
+router.post('/start', withZod(startLearnSchema, (req, res, body) => {
   res.json(learnEngine.startLearning(body));
 }));
 
 // PATCH /api/learn/threshold — adjust live during a session
 router.patch('/threshold', withZod(thresholdSchema.required(), (req, res, body) => {
   res.json(learnEngine.setThreshold(body.threshold));
+}));
+
+// PATCH /api/learn/echo-filter — toggle the actuator-echo suppression
+router.patch('/echo-filter', withZod(echoFilterSchema, (req, res, body) => {
+  res.json(learnEngine.setEchoFilter(body.enabled));
 }));
 
 // POST /api/learn/stop — end the session and return its detections

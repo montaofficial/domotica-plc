@@ -131,15 +131,23 @@ export const learnApi = {
       method: 'POST',
       body: JSON.stringify({ dst })
     }),
-  startLearning: (threshold) =>
+  startLearning: ({ threshold, echoFilter } = {}) =>
     request('/learn/start', {
       method: 'POST',
-      body: JSON.stringify(threshold != null ? { threshold } : {})
+      body: JSON.stringify({
+        ...(threshold != null ? { threshold } : {}),
+        ...(echoFilter != null ? { echoFilter } : {})
+      })
     }),
   setThreshold: (threshold) =>
     request('/learn/threshold', {
       method: 'PATCH',
       body: JSON.stringify({ threshold })
+    }),
+  setEchoFilter: (enabled) =>
+    request('/learn/echo-filter', {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled })
     }),
   stopLearning: () => request('/learn/stop', { method: 'POST' })
 };

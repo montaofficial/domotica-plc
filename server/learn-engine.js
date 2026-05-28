@@ -25,6 +25,16 @@ const MAX_VALUE_SAMPLES = 8;
 const MAX_DETECTIONS_PER_SESSION = 200;
 const CALIBRATION_PROGRESS_MS = 500;
 
+// KNX pattern: pressing a physical switch emits a command telegram from the
+// switch's individual address, and ~100-500 ms later one or more actuators
+// echo back the new state with the same value but from their own individual
+// address (often on a different status group address). The first telegram is
+// the "real" command — the rest are confirmations the user does not need to
+// map. Within ECHO_WINDOW_MS we suppress any detection that has the same
+// rawHex but a different src than something we just emitted.
+const ECHO_WINDOW_MS = 800;
+const RECENT_EMISSIONS_CAP = 16;
+
 const REASONS = {
   NEW_GA: { reason: 'new_ga', score: 1.0, label: 'Nuovo GA' },
   NOVEL_TYPE: { reason: 'novel_type', score: 0.8, label: 'Tipo inedito' },
@@ -127,7 +137,7 @@ class LearnEngine extends EventEmitter {
 
   // ---------- learn lifecycle ----------
 
-  startLearning({ threshold = DEFAULT_THRESHOLD } = {}) {
+  startLearning({ threshold = DEFAULT_THRESHOLD, echoFilter = true } = {}) {
     if (this.state === 'calibrating') this._endCalibration('superseded');
     if (this.state === 'learning') this.stopLearning();
 
@@ -135,6 +145,9 @@ class LearnEngine extends EventEmitter {
     this.session = {
       id: uuidv4(),
       threshold: t,
+      echoFilter: echoFilter !== false,
+      echoesSuppressed: 0,
+      recentEmissions: [],
       startedAt: new Date().toISOString(),
       detections: [],
       telegramsObserved: 0
@@ -154,6 +167,13 @@ class LearnEngine extends EventEmitter {
   setThreshold(threshold) {
     if (!this.session) return this.getStateSummary();
     this.session.threshold = this._clampThreshold(threshold);
+    this._broadcastState();
+    return this.getStateSummary();
+  }
+
+  setEchoFilter(enabled) {
+    if (!this.session) return this.getStateSummary();
+    this.session.echoFilter = !!enabled;
     this._broadcastState();
     return this.getStateSummary();
   }
@@ -196,27 +216,66 @@ class LearnEngine extends EventEmitter {
     if (this.state === 'learning') {
       this.session.telegramsObserved++;
       const verdict = this._score(t);
-      if (verdict.score >= this.session.threshold) {
-        const detection = {
-          id: uuidv4(),
-          sessionId: this.session.id,
-          dst: t.dst,
-          src: t.src,
-          type: t.type,
-          rawHex: t.rawHex,
-          decodedValue: t.decodedValue,
-          timestamp: t.timestamp,
-          score: verdict.score,
-          reason: verdict.reason,
-          label: verdict.label
-        };
-        this.session.detections.unshift(detection);
-        if (this.session.detections.length > MAX_DETECTIONS_PER_SESSION) {
-          this.session.detections.length = MAX_DETECTIONS_PER_SESSION;
-        }
-        this.emit('detection', detection);
+      if (verdict.score < this.session.threshold) return;
+
+      if (this.session.echoFilter && this._isLikelyEcho(t)) {
+        this.session.echoesSuppressed++;
+        // No detection emitted, but bump the broadcast so the UI counter
+        // updates. Skip the state push if too chatty by batching to once
+        // per ~250 ms.
+        this._broadcastStateThrottled();
+        return;
       }
+
+      this._trackEmission(t);
+
+      const detection = {
+        id: uuidv4(),
+        sessionId: this.session.id,
+        dst: t.dst,
+        src: t.src,
+        type: t.type,
+        rawHex: t.rawHex,
+        decodedValue: t.decodedValue,
+        timestamp: t.timestamp,
+        score: verdict.score,
+        reason: verdict.reason,
+        label: verdict.label
+      };
+      this.session.detections.unshift(detection);
+      if (this.session.detections.length > MAX_DETECTIONS_PER_SESSION) {
+        this.session.detections.length = MAX_DETECTIONS_PER_SESSION;
+      }
+      this.emit('detection', detection);
       return;
+    }
+  }
+
+  _isLikelyEcho(t) {
+    if (!t.rawHex) return false;
+    const now = Date.now();
+    const buf = this.session.recentEmissions;
+    for (let i = buf.length - 1; i >= 0; i--) {
+      const e = buf[i];
+      if (now - e.at > ECHO_WINDOW_MS) break;
+      if (e.rawHex === t.rawHex && e.src !== t.src) return true;
+    }
+    return false;
+  }
+
+  _trackEmission(t) {
+    const buf = this.session.recentEmissions;
+    buf.push({ at: Date.now(), rawHex: t.rawHex, src: t.src });
+    const cutoff = Date.now() - ECHO_WINDOW_MS;
+    while (buf.length > 0 && buf[0].at < cutoff) buf.shift();
+    if (buf.length > RECENT_EMISSIONS_CAP) buf.splice(0, buf.length - RECENT_EMISSIONS_CAP);
+  }
+
+  _broadcastStateThrottled() {
+    const now = Date.now();
+    if (!this._lastStateBroadcast || now - this._lastStateBroadcast > 250) {
+      this._lastStateBroadcast = now;
+      this._broadcastState();
     }
   }
 
@@ -322,6 +381,8 @@ class LearnEngine extends EventEmitter {
     return {
       id: this.session.id,
       threshold: this.session.threshold,
+      echoFilter: this.session.echoFilter,
+      echoesSuppressed: this.session.echoesSuppressed,
       startedAt: this.session.startedAt,
       detectionsCount: this.session.detections.length,
       telegramsObserved: this.session.telegramsObserved

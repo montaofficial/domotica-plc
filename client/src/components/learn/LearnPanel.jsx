@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Brain, Database, Loader2, Pause, Play, RotateCcw, Sliders } from 'lucide-react';
+import { Brain, Database, Loader2, Pause, Play, RotateCcw, Sliders, Repeat2 } from 'lucide-react';
 import CalibrationView from './CalibrationView';
 import DetectionList from './DetectionList';
 import {
   useStartBaseline, useExtendBaseline, useStopBaseline, useResetBaseline,
-  useStartLearning, useStopLearning, useSetThreshold, useExcludeFromNoise
+  useStartLearning, useStopLearning, useSetThreshold, useSetEchoFilter, useExcludeFromNoise
 } from '../../hooks/useLearn';
 
 const PRESET_BASELINES = [
@@ -41,6 +41,7 @@ function LearnPanel({
   const startLearning = useStartLearning();
   const stopLearning = useStopLearning();
   const setThresholdMut = useSetThreshold();
+  const setEchoFilterMut = useSetEchoFilter();
   const excludeFromNoise = useExcludeFromNoise();
 
   const state = learnState?.state ?? 'idle';
@@ -49,6 +50,8 @@ function LearnPanel({
 
   // Keep slider in sync with server-reported session threshold when one is active.
   const effectiveThreshold = session?.threshold ?? threshold;
+  const echoFilterOn = session?.echoFilter ?? true;
+  const echoesSuppressed = session?.echoesSuppressed ?? 0;
 
   const profileFresh = useMemo(() => {
     if (!profile.lastUpdate) return false;
@@ -58,7 +61,7 @@ function LearnPanel({
   const handleStartFlow = () => {
     if (profileFresh && profile.signatureCount > 0) {
       // Profile is fresh enough — go straight to Learn
-      startLearning.mutate(threshold);
+      startLearning.mutate({ threshold });
     } else {
       startBaseline.mutate(baselineMs);
     }
@@ -146,7 +149,7 @@ function LearnPanel({
           onExtend={() => extendBaseline.mutate(10_000)}
           onSkip={() => {
             stopBaseline.mutate(undefined, {
-              onSuccess: () => startLearning.mutate(threshold)
+              onSuccess: () => startLearning.mutate({ threshold })
             });
           }}
           onReset={() => resetBaseline.mutate()}
@@ -156,7 +159,7 @@ function LearnPanel({
       {/* Learn phase */}
       {state === 'learning' && (
         <>
-          <div className="card p-4 flex items-center gap-4">
+          <div className="card p-4 flex flex-wrap items-center gap-x-6 gap-y-3">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-emerald-400" />
               <span className="font-semibold text-white">Sessione attiva</span>
@@ -164,7 +167,31 @@ function LearnPanel({
             <div className="text-xs text-dark-400">
               {session?.telegramsObserved ?? 0} telegrammi ascoltati ·
               {' '}<strong className="text-white">{detections?.length ?? 0}</strong> rilevamenti
+              {echoesSuppressed > 0 && (
+                <span className="ml-2 text-fuchsia-300">
+                  · {echoesSuppressed} echo nascosti
+                </span>
+              )}
             </div>
+
+            <label
+              className={`flex items-center gap-2 text-xs cursor-pointer select-none px-2 py-1.5 rounded border ${
+                echoFilterOn
+                  ? 'bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-200'
+                  : 'bg-dark-700 border-dark-600 text-dark-300'
+              }`}
+              title="Sopprime i telegram di feedback inviati dagli attuatori subito dopo il comando (stesso valore, src diversa, < 800 ms)."
+            >
+              <Repeat2 className="w-3.5 h-3.5" />
+              <input
+                type="checkbox"
+                className="accent-fuchsia-400"
+                checked={echoFilterOn}
+                onChange={(e) => setEchoFilterMut.mutate(e.target.checked)}
+              />
+              Filtra echo attuatori
+            </label>
+
             <div className="ml-auto flex items-center gap-3 min-w-[260px]">
               <Sliders className="w-4 h-4 text-dark-400" />
               <input
