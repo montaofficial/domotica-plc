@@ -17,7 +17,7 @@ const MAX_DETECTIONS_CACHED = 200;
 // immediate query invalidation -> a GET refetch per message, flooding the
 // network. We coalesce invalidations into a single flush per window so a
 // burst of messages causes at most one refetch per query key.
-const INVALIDATE_WINDOW_MS = 1500;
+const INVALIDATE_WINDOW_MS = 800;
 
 function App() {
   const queryClient = useQueryClient();
@@ -88,7 +88,10 @@ function App() {
         break;
 
       case 'state_change':
-        scheduleInvalidate(['groupAddresses']);
+        // Only refetch when a *mapped* (configured) address changes. State
+        // changes for unmapped GAs — the noisy 3/* and 4/* blocks — are not
+        // shown anywhere, so refetching for them is pure wasted traffic.
+        if (message.data?.mapped) scheduleInvalidate(['groupAddresses']);
         break;
 
       case 'device_discovered':

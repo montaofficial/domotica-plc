@@ -148,7 +148,12 @@ class KNXService extends EventEmitter {
     this.emit('telegram', telegram);
 
     if (type === 'GroupWrite' || type === 'GroupResponse') {
-      this.emit('state_change', { address: dst, value: decodedValue, rawHex });
+      // Tag whether this address is actually mapped (configured with a name).
+      // The UI only shows configured devices, so unmapped chatter (e.g. the
+      // noisy 3/* and 4/* blocks) must not trigger a refetch downstream.
+      const ga = groupAddressesDb.getByAddress(dst);
+      const mapped = !!ga?.name;
+      this.emit('state_change', { address: dst, value: decodedValue, rawHex, mapped });
     }
   }
 

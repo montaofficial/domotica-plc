@@ -124,7 +124,7 @@ function initializeDatabase() {
       inferred_category TEXT,         -- light/switch/blind/thermostat/sensor/...
       confidence REAL,                -- 0..1
       rationale TEXT,                 -- why this classification
-      source TEXT,                    -- 'heuristic' | 'claude' | 'user'
+      source TEXT,                    -- 'heuristic' | 'agent' | 'user'
       updated_at TEXT
     );
   `);

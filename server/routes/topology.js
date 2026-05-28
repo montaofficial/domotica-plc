@@ -232,7 +232,7 @@ router.patch('/classify', withZod(classifySchema, (req, res, body) => {
       inferredCategory: item.category,
       confidence: item.confidence,
       rationale: item.rationale,
-      source: 'claude'
+      source: 'agent'
     });
     // Optionally promote the classification into the user-facing GA record.
     const gaUpdate = {};
