@@ -107,6 +107,26 @@ function initializeDatabase() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_noise_signatures_excluded ON noise_signatures(excluded);
+
+    -- Topology mapping: per group-address evidence gathered passively
+    -- (GroupValueRead answers + history-derived stats) plus the resulting
+    -- classification. Kept separate from group_addresses so the raw evidence
+    -- and the human-facing config can evolve independently and the mapping is
+    -- fully reversible.
+    CREATE TABLE IF NOT EXISTS ga_inference (
+      address TEXT PRIMARY KEY,
+      answered_read INTEGER,          -- 1 if it replied to GroupValueRead
+      payload_len INTEGER,            -- bytes in the last observed payload
+      last_read_hex TEXT,
+      read_at TEXT,
+      role TEXT,                      -- 'status' | 'command' | 'unknown'
+      inferred_dpt TEXT,              -- e.g. DPT1.001, DPT5.001, DPT9.001
+      inferred_category TEXT,         -- light/switch/blind/thermostat/sensor/...
+      confidence REAL,                -- 0..1
+      rationale TEXT,                 -- why this classification
+      source TEXT,                    -- 'heuristic' | 'claude' | 'user'
+      updated_at TEXT
+    );
   `);
 
   // Insert default room if none exist
@@ -470,6 +490,62 @@ export const learnSessionsDb = {
 
   recent(limit = 20) {
     return db.prepare('SELECT * FROM learn_sessions ORDER BY started_at DESC LIMIT ?').all(limit);
+  }
+};
+
+// Topology inference operations
+export const gaInferenceDb = {
+  getAll() {
+    return db.prepare('SELECT * FROM ga_inference').all();
+  },
+
+  getByAddress(address) {
+    return db.prepare('SELECT * FROM ga_inference WHERE address = ?').get(address);
+  },
+
+  // Record the raw probe result (read-only evidence).
+  recordProbe(address, { answered, payloadLen, hex }) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO ga_inference (address, answered_read, payload_len, last_read_hex, read_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(address) DO UPDATE SET
+        answered_read = excluded.answered_read,
+        payload_len = excluded.payload_len,
+        last_read_hex = excluded.last_read_hex,
+        read_at = excluded.read_at,
+        updated_at = excluded.updated_at
+    `).run(address, answered ? 1 : 0, payloadLen ?? null, hex ?? null, now, now);
+  },
+
+  // Apply a classification (role/dpt/category/confidence/rationale).
+  classify(address, { role, inferredDpt, inferredCategory, confidence, rationale, source }) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO ga_inference (address, role, inferred_dpt, inferred_category, confidence, rationale, source, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(address) DO UPDATE SET
+        role = excluded.role,
+        inferred_dpt = excluded.inferred_dpt,
+        inferred_category = excluded.inferred_category,
+        confidence = excluded.confidence,
+        rationale = excluded.rationale,
+        source = excluded.source,
+        updated_at = excluded.updated_at
+    `).run(
+      address,
+      role ?? null,
+      inferredDpt ?? null,
+      inferredCategory ?? null,
+      confidence ?? null,
+      rationale ?? null,
+      source ?? 'heuristic',
+      now
+    );
+  },
+
+  clear() {
+    db.prepare('DELETE FROM ga_inference').run();
   }
 };
 

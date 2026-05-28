@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
 import Rooms from './pages/Rooms';
 import Discovery from './pages/Discovery';
+import Topology from './pages/Topology';
 import useWebSocket from './hooks/useWebSocket';
 import { Loader2 } from 'lucide-react';
 
@@ -139,6 +140,7 @@ function App() {
               />
             }
           />
+          <Route path="/topology" element={<Topology />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

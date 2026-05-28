@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   Layers,
   Radio,
+  Network,
   Wifi,
   WifiOff,
   Activity,
@@ -15,7 +16,8 @@ const navItems = [
   { to: '/', icon: Home, label: 'Dashboard' },
   { to: '/devices', icon: LayoutGrid, label: 'Devices' },
   { to: '/rooms', icon: Layers, label: 'Rooms' },
-  { to: '/discovery', icon: Radio, label: 'Discovery' }
+  { to: '/discovery', icon: Radio, label: 'Discovery' },
+  { to: '/topology', icon: Network, label: 'Topology' }
 ];
 
 function Layout({ children, connected, knxStatus, user, onLogout }) {

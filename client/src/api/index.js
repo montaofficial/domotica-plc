@@ -152,4 +152,14 @@ export const learnApi = {
   stopLearning: () => request('/learn/stop', { method: 'POST' })
 };
 
+// Topology mapping API (passive)
+export const topologyApi = {
+  scan: (opts = {}) =>
+    request('/topology/scan', { method: 'POST', body: JSON.stringify(opts) }),
+  evidence: () => request('/topology/evidence'),
+  map: () => request('/topology/map'),
+  classify: (items) =>
+    request('/topology/classify', { method: 'PATCH', body: JSON.stringify({ items }) })
+};
+
 export { AuthError };

@@ -284,6 +284,57 @@ class KNXService extends EventEmitter {
   }
 
   /**
+   * Passively read a group address's current state: send a GroupValueRead and
+   * resolve with the first matching GroupValueResponse. This is READ-ONLY on
+   * the bus — it never changes device state — and is the primitive the
+   * topology mapper uses to fingerprint the installation without actuating
+   * anything. Resolves { answered, hex, len } (answered:false on timeout).
+   * @param {string} address - Group address (e.g. "3/0/1")
+   * @param {number} timeoutMs - how long to wait for a response
+   */
+  readGroupValue(address, timeoutMs = 600) {
+    if (!this.connected) {
+      return Promise.resolve({ address, answered: false, hex: '', len: 0, error: 'not_connected' });
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const onTelegram = (t) => {
+        if (settled) return;
+        if (t.dst === address && (t.type === 'GroupResponse' || t.type === 'GroupWrite')) {
+          settled = true;
+          this.off('telegram', onTelegram);
+          clearTimeout(timer);
+          resolve({
+            address,
+            answered: true,
+            hex: t.rawHex || '',
+            len: t.rawHex ? t.rawHex.length / 2 : 0,
+            type: t.type
+          });
+        }
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.off('telegram', onTelegram);
+        resolve({ address, answered: false, hex: '', len: 0 });
+      }, timeoutMs);
+
+      this.on('telegram', onTelegram);
+      try {
+        this.client.read(address);
+      } catch (error) {
+        if (!settled) {
+          settled = true;
+          this.off('telegram', onTelegram);
+          clearTimeout(timer);
+          resolve({ address, answered: false, hex: '', len: 0, error: error?.message || String(error) });
+        }
+      }
+    });
+  }
+
+  /**
    * Toggle a boolean group address
    * @param {string} address - Group address
    */

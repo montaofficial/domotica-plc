@@ -16,6 +16,7 @@ import devicesRouter from './routes/devices.js';
 import groupAddressesRouter from './routes/group-addresses.js';
 import controlRouter from './routes/control.js';
 import learnRouter from './routes/learn.js';
+import topologyRouter from './routes/topology.js';
 import { historyDb, closeDatabase } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +64,7 @@ app.use('/api/devices', devicesRouter);
 app.use('/api/group-addresses', groupAddressesRouter);
 app.use('/api/control', controlRouter);
 app.use('/api/learn', learnRouter);
+app.use('/api/topology', topologyRouter);
 
 // Telegram history endpoint
 app.get('/api/history', (req, res) => {
