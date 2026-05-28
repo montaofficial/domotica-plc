@@ -11,11 +11,16 @@ import Discovery from './pages/Discovery';
 import useWebSocket from './hooks/useWebSocket';
 import { Loader2 } from 'lucide-react';
 
+const MAX_DETECTIONS_CACHED = 200;
+
 function App() {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [recentTelegrams, setRecentTelegrams] = useState([]);
+  const [learnState, setLearnState] = useState(null);
+  const [learnCalibration, setLearnCalibration] = useState(null);
+  const [learnDetections, setLearnDetections] = useState([]);
 
   // Check auth status on mount
   useEffect(() => {
@@ -64,6 +69,29 @@ function App() {
         queryClient.invalidateQueries({ queryKey: ['groupAddresses'] });
         break;
 
+      case 'learn_state': {
+        const data = message.data;
+        setLearnState(data);
+        if (data?.state !== 'calibrating') setLearnCalibration(null);
+        // When a session ends or a new one starts, drop the cached detections
+        // - on idle: nothing to show; on learning: start fresh.
+        if (data?.state !== 'learning') setLearnDetections([]);
+        queryClient.invalidateQueries({ queryKey: ['learn'] });
+        break;
+      }
+
+      case 'learn_calibrating':
+        setLearnCalibration(message.data);
+        break;
+
+      case 'learn_detection':
+        setLearnDetections(prev => {
+          const next = [message.data, ...prev];
+          if (next.length > MAX_DETECTIONS_CACHED) next.length = MAX_DETECTIONS_CACHED;
+          return next;
+        });
+        break;
+
       default:
         break;
     }
@@ -102,7 +130,14 @@ function App() {
           <Route path="/rooms" element={<Rooms />} />
           <Route
             path="/discovery"
-            element={<Discovery recentTelegrams={recentTelegrams} />}
+            element={
+              <Discovery
+                recentTelegrams={recentTelegrams}
+                learnState={learnState}
+                learnCalibration={learnCalibration}
+                learnDetections={learnDetections}
+              />
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

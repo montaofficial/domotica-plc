@@ -1,5 +1,6 @@
 import { WebSocketServer } from 'ws';
 import knxService from './knx-service.js';
+import learnEngine from './learn-engine.js';
 import { authenticateWebSocket } from './auth.js';
 
 let wss = null;
@@ -28,6 +29,14 @@ export function initializeWebSocket(server) {
       data: knxService.getStatus()
     }));
 
+    // Hand the client whatever state the Learn engine is in, so a page that
+    // reconnects mid-session can pick up where it left off without an extra
+    // round-trip to GET /api/learn/state.
+    ws.send(JSON.stringify({
+      type: 'learn_state',
+      data: learnEngine.getStateSummary()
+    }));
+
     ws.on('message', (message) => {
       try {
         const data = JSON.parse(message);
@@ -50,6 +59,7 @@ export function initializeWebSocket(server) {
 
   // Forward KNX events to all connected clients
   setupKNXEventForwarding();
+  setupLearnEventForwarding();
 
   console.log('[WS] WebSocket server initialized (auth required)');
 }
@@ -74,6 +84,18 @@ function handleClientMessage(ws, message) {
     default:
       console.log('[WS] Unknown message type:', message.type);
   }
+}
+
+function setupLearnEventForwarding() {
+  learnEngine.on('state', (data) => {
+    broadcast({ type: 'learn_state', data });
+  });
+  learnEngine.on('calibration_progress', (data) => {
+    broadcast({ type: 'learn_calibrating', data });
+  });
+  learnEngine.on('detection', (data) => {
+    broadcast({ type: 'learn_detection', data });
+  });
 }
 
 function setupKNXEventForwarding() {

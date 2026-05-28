@@ -80,6 +80,33 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_group_addresses_room ON group_addresses(room_id);
     CREATE INDEX IF NOT EXISTS idx_telegram_history_timestamp ON telegram_history(timestamp);
     CREATE INDEX IF NOT EXISTS idx_telegram_history_dst ON telegram_history(dst);
+
+    -- Noise floor signatures used by the Learn engine. One row per group
+    -- address ever seen during a calibration window. JSON arrays as TEXT to
+    -- keep the storage layer SQL-only (no JSON1 dependency).
+    CREATE TABLE IF NOT EXISTS noise_signatures (
+      dst TEXT PRIMARY KEY,
+      occurrences INTEGER NOT NULL DEFAULT 0,
+      src_set TEXT NOT NULL DEFAULT '[]',
+      type_set TEXT NOT NULL DEFAULT '[]',
+      value_samples TEXT NOT NULL DEFAULT '[]',
+      first_seen TEXT NOT NULL,
+      last_seen TEXT NOT NULL,
+      excluded INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- Learn sessions are short-lived (minutes); we persist them for audit
+    -- and so a reconnecting client can pick up the current one.
+    CREATE TABLE IF NOT EXISTS learn_sessions (
+      id TEXT PRIMARY KEY,
+      threshold REAL NOT NULL DEFAULT 0.4,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      telegrams_observed INTEGER NOT NULL DEFAULT 0,
+      detections_count INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_noise_signatures_excluded ON noise_signatures(excluded);
   `);
 
   // Insert default room if none exist
@@ -363,6 +390,86 @@ export const historyDb = {
       DELETE FROM telegram_history
       WHERE timestamp < ?
     `).run(cutoff.toISOString());
+  }
+};
+
+// Noise signatures operations (Learn engine baseline)
+export const noiseSignaturesDb = {
+  getAll() {
+    return db.prepare('SELECT * FROM noise_signatures WHERE excluded = 0').all();
+  },
+
+  getByDst(dst) {
+    return db.prepare('SELECT * FROM noise_signatures WHERE dst = ?').get(dst);
+  },
+
+  upsert(sig) {
+    db.prepare(`
+      INSERT INTO noise_signatures (dst, occurrences, src_set, type_set, value_samples, first_seen, last_seen, excluded)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+      ON CONFLICT(dst) DO UPDATE SET
+        occurrences = excluded.occurrences,
+        src_set = excluded.src_set,
+        type_set = excluded.type_set,
+        value_samples = excluded.value_samples,
+        last_seen = excluded.last_seen
+    `).run(
+      sig.dst,
+      sig.occurrences,
+      sig.src_set,
+      sig.type_set,
+      sig.value_samples,
+      sig.first_seen,
+      sig.last_seen
+    );
+  },
+
+  bulkUpsert(sigs) {
+    const upsert = db.transaction((rows) => {
+      for (const sig of rows) this.upsert(sig);
+    });
+    upsert(sigs);
+  },
+
+  // Soft-exclude: keeps the row but the engine ignores it. This lets the
+  // user "tell" the system a given GA must never be treated as noise even
+  // if it was seen during calibration.
+  setExcluded(dst, excluded = true) {
+    db.prepare('UPDATE noise_signatures SET excluded = ? WHERE dst = ?').run(excluded ? 1 : 0, dst);
+  },
+
+  deleteByDst(dst) {
+    db.prepare('DELETE FROM noise_signatures WHERE dst = ?').run(dst);
+  },
+
+  clear() {
+    db.prepare('DELETE FROM noise_signatures').run();
+  },
+
+  count() {
+    return db.prepare('SELECT COUNT(*) AS c FROM noise_signatures WHERE excluded = 0').get().c;
+  }
+};
+
+// Learn sessions operations
+export const learnSessionsDb = {
+  insert(session) {
+    db.prepare(`
+      INSERT INTO learn_sessions (id, threshold, started_at)
+      VALUES (?, ?, ?)
+    `).run(session.id, session.threshold, session.started_at);
+  },
+
+  markEnded(id, endedAt, detectionsCount, telegramsObserved) {
+    db.prepare(`
+      UPDATE learn_sessions
+      SET ended_at = ?, detections_count = ?, telegrams_observed = ?
+      WHERE id = ?
+    `).run(endedAt, detectionsCount, telegramsObserved, id);
+  },
+
+  recent(limit = 20) {
+    return db.prepare('SELECT * FROM learn_sessions ORDER BY started_at DESC LIMIT ?').all(limit);
   }
 };
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 import knxService from './knx-service.js';
+import learnEngine from './learn-engine.js';
 import { initializeWebSocket, getConnectedClientCount } from './websocket.js';
 import { authMiddleware } from './auth.js';
 import authRouter from './routes/auth.js';
@@ -14,6 +15,7 @@ import roomsRouter from './routes/rooms.js';
 import devicesRouter from './routes/devices.js';
 import groupAddressesRouter from './routes/group-addresses.js';
 import controlRouter from './routes/control.js';
+import learnRouter from './routes/learn.js';
 import { historyDb, closeDatabase } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,6 +62,7 @@ app.use('/api/rooms', roomsRouter);
 app.use('/api/devices', devicesRouter);
 app.use('/api/group-addresses', groupAddressesRouter);
 app.use('/api/control', controlRouter);
+app.use('/api/learn', learnRouter);
 
 // Telegram history endpoint
 app.get('/api/history', (req, res) => {
@@ -130,6 +133,10 @@ knxService.on('error', () => {
 
 // Connect to KNX
 knxService.connect();
+
+// Initialise the Learn engine after the KNX service so it can subscribe
+// to telegrams on the existing EventEmitter without races.
+learnEngine.init();
 
 // Periodic cleanup of old telegram history (keep 7 days)
 const cleanupInterval = setInterval(() => {

@@ -109,4 +109,39 @@ export const historyApi = {
     request(`/history?address=${encodeURIComponent(address)}&limit=${limit}`)
 };
 
+// Learn engine API
+export const learnApi = {
+  state: () => request('/learn/state'),
+  profile: () => request('/learn/profile'),
+  detections: () => request('/learn/detections'),
+  startBaseline: (durationMs) =>
+    request('/learn/baseline/start', {
+      method: 'POST',
+      body: JSON.stringify(durationMs ? { durationMs } : {})
+    }),
+  extendBaseline: (durationMs) =>
+    request('/learn/baseline/extend', {
+      method: 'POST',
+      body: JSON.stringify(durationMs ? { durationMs } : {})
+    }),
+  stopBaseline: () => request('/learn/baseline/stop', { method: 'POST' }),
+  resetBaseline: () => request('/learn/baseline', { method: 'DELETE' }),
+  excludeFromNoise: (dst) =>
+    request('/learn/baseline/exclude', {
+      method: 'POST',
+      body: JSON.stringify({ dst })
+    }),
+  startLearning: (threshold) =>
+    request('/learn/start', {
+      method: 'POST',
+      body: JSON.stringify(threshold != null ? { threshold } : {})
+    }),
+  setThreshold: (threshold) =>
+    request('/learn/threshold', {
+      method: 'PATCH',
+      body: JSON.stringify({ threshold })
+    }),
+  stopLearning: () => request('/learn/stop', { method: 'POST' })
+};
+
 export { AuthError };
