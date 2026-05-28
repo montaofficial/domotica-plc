@@ -69,7 +69,9 @@ export function useDiscoveredAddresses() {
   return useQuery({
     queryKey: ['groupAddresses', 'discovered'],
     queryFn: groupAddressesApi.getDiscovered,
-    refetchInterval: 5000 // Refresh every 5 seconds
+    // Updates are pushed over WebSocket (coalesced invalidation in App.jsx);
+    // this slow interval is only a reconnect/missed-event safety net.
+    refetchInterval: 30000
   });
 }
 

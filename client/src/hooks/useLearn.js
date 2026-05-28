@@ -19,7 +19,9 @@ export function useLearnProfile() {
   return useQuery({
     queryKey: ['learn', 'profile'],
     queryFn: learnApi.profile,
-    refetchInterval: 5_000
+    // WS pushes learn_state on every transition; coalesced invalidation in
+    // App.jsx refreshes this. Slow interval is just a safety net.
+    refetchInterval: 30_000
   });
 }
 
