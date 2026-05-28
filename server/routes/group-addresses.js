@@ -57,13 +57,31 @@ router.post('/', (req, res) => {
   try {
     const validated = createGroupAddressSchema.parse(req.body);
 
-    // Check if address already exists
+    // The bus auto-discovers a row for every address it ever sees (with
+    // name=NULL), and the topology mapper may pre-set device_type/data_type
+    // on those rows too. So "this address already exists" is the normal case
+    // and must NOT block manual configuration. We only reject when the
+    // address is already *configured* (has a name); an unconfigured row is
+    // adopted in place — that's exactly what manually assigning it means.
     const existing = groupAddressesDb.getByAddress(validated.address);
-    if (existing) {
+    if (existing && existing.name) {
       return res.status(409).json({
-        error: 'Address already exists',
-        existing: existing
+        error: 'Address already configured',
+        existing
       });
+    }
+
+    if (existing) {
+      const adopted = groupAddressesDb.update(existing.id, {
+        name: validated.name,
+        description: validated.description,
+        device_type: validated.device_type,
+        data_type: validated.data_type,
+        room_id: validated.room_id ?? null,
+        is_controllable: validated.is_controllable,
+        icon: validated.icon ?? null
+      });
+      return res.status(200).json(adopted);
     }
 
     const ga = groupAddressesDb.upsert({

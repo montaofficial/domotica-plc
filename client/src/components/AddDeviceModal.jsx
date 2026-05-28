@@ -58,8 +58,8 @@ function AddDeviceModal({ isOpen, onClose }) {
       resetForm();
     },
     onError: (err) => {
-      if (err.message.includes('already exists')) {
-        setError('A device with this address already exists');
+      if (err.message.includes('already configured')) {
+        setError('Questo indirizzo è già configurato come dispositivo: modificalo dalla pagina Devices.');
       } else {
         setError(err.message);
       }
