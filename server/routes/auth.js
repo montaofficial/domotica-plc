@@ -28,9 +28,14 @@ router.post('/login', loginLimiter, (req, res) => {
 
     const token = generateToken(username);
 
+    // `secure` must reflect the actual request scheme, not NODE_ENV:
+    // setting Secure over plain HTTP makes browsers silently drop the cookie
+    // (RFC 6265 §4.1.2.5), which breaks LAN access on http://<host>:3000.
+    // With `trust proxy` set in index.js, req.secure also returns true behind
+    // a TLS-terminating reverse proxy that sets X-Forwarded-Proto.
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: req.secure,
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000
     });
