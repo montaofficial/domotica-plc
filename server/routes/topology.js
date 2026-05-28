@@ -139,11 +139,15 @@ function buildEvidence() {
     const h = hist.get(g.address) || { writes: 0, srcs: [], distinctValues: 0, values: [], widths: [], partners: [] };
     const i = inf.get(g.address) || {};
     return {
+      id: g.id,
       address: g.address,
       name: g.name,
+      description: g.description,
       current_value: g.current_value,
       device_type: g.device_type,
       data_type: g.data_type,
+      room_id: g.room_id,
+      is_controllable: g.is_controllable,
       probe: {
         answeredRead: i.answered_read === 1,
         payloadLen: i.payload_len,

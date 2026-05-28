@@ -28,7 +28,7 @@ const roomIconMap = {
   stairs: ArrowUpDown
 };
 
-function RoomSection({ room, devices, defaultExpanded = true }) {
+function RoomSection({ room, devices, defaultExpanded = true, editMode = false, onEdit }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const RoomIcon = roomIconMap[room.icon] || Home;
 
@@ -69,7 +69,7 @@ function RoomSection({ room, devices, defaultExpanded = true }) {
         <div className="p-4 pt-0 border-t border-dark-700">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 pt-4">
             {devices.map(device => (
-              <DeviceCard key={device.id} device={device} />
+              <DeviceCard key={device.id} device={device} editMode={editMode} onEdit={onEdit} />
             ))}
           </div>
         </div>

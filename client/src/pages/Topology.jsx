@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTopologyMap, useTopologyScan, useClassify } from '../hooks/useTopology';
+import DeviceConfigModal from '../components/DeviceConfigModal';
 import {
   Network, Loader2, RefreshCw, ArrowRight, ArrowLeft, Lightbulb,
-  ToggleLeft, Gauge, Sigma, HelpCircle, Check, Pencil
+  ToggleLeft, Gauge, Sigma, HelpCircle, Check, Pencil, Settings
 } from 'lucide-react';
 
 const CATEGORY_META = {
@@ -37,12 +38,13 @@ function RoleBadge({ role }) {
   return <span className="text-[10px] text-dark-400">?</span>;
 }
 
-function GaRow({ item, onSaveName }) {
+function GaRow({ item, onSaveName, onConfigure }) {
   const c = item.classification || {};
   const meta = CATEGORY_META[c.inferredCategory] || CATEGORY_META.unknown;
   const Icon = meta.icon;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name || '');
+  const isMapped = !!item.name;
 
   return (
     <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-dark-700/30">
@@ -88,6 +90,15 @@ function GaRow({ item, onSaveName }) {
         <div className="text-[10px] text-dark-500">{c.inferredDpt || item.data_type || '—'}</div>
         <ConfidenceBar value={c.confidence} />
       </div>
+
+      <button
+        onClick={() => onConfigure?.(item)}
+        className="shrink-0 btn-secondary text-xs py-1 px-2"
+        title={isMapped ? 'Modifica questo dispositivo' : 'Configura / assegna questo indirizzo'}
+      >
+        <Settings className="w-3 h-3 inline mr-1" />
+        {isMapped ? 'Modifica' : 'Configura'}
+      </button>
     </div>
   );
 }
@@ -96,6 +107,7 @@ function Topology() {
   const { data: map, isLoading, error, refetch } = useTopologyMap();
   const scan = useTopologyScan();
   const classify = useClassify();
+  const [configuring, setConfiguring] = useState(null);
 
   const handleSaveName = (address, name) => {
     classify.mutate([{ address, name, apply_name: true }]);
@@ -160,11 +172,17 @@ function Topology() {
               .slice()
               .sort((a, b) => a.address.localeCompare(b.address, undefined, { numeric: true }))
               .map((item) => (
-                <GaRow key={item.address} item={item} onSaveName={handleSaveName} />
+                <GaRow key={item.address} item={item} onSaveName={handleSaveName} onConfigure={setConfiguring} />
               ))}
           </div>
         </div>
       ))}
+
+      <DeviceConfigModal
+        device={configuring}
+        isOpen={!!configuring}
+        onClose={() => setConfiguring(null)}
+      />
     </div>
   );
 }

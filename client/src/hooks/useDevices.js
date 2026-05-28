@@ -82,6 +82,9 @@ export function useUpdateGroupAddress() {
     mutationFn: ({ id, data }) => groupAddressesApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groupAddresses'] });
+      // Configuring a device from anywhere (Dashboard, Topology, Discovery)
+      // should keep the topology map in sync too.
+      queryClient.invalidateQueries({ queryKey: ['topology'] });
     }
   });
 }

@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRooms, useConfiguredDevices } from '../hooks/useDevices';
 import RoomSection from '../components/RoomSection';
-import { Radio, Loader2, AlertCircle } from 'lucide-react';
+import DeviceConfigModal from '../components/DeviceConfigModal';
+import { Radio, Loader2, AlertCircle, Pencil, Check } from 'lucide-react';
 
 function Dashboard() {
   const { data: rooms = [], isLoading: roomsLoading, error: roomsError } = useRooms();
   const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useConfiguredDevices();
+  const [editMode, setEditMode] = useState(false);
+  const [configuringDevice, setConfiguringDevice] = useState(null);
 
   // Group devices by room
   const devicesByRoom = useMemo(() => {
@@ -98,22 +101,42 @@ function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-dark-400">Control your smart home devices</p>
+          <p className="text-dark-400">
+            {editMode
+              ? 'Modalità modifica: tocca un dispositivo per riconfigurarlo.'
+              : 'Control your smart home devices'}
+          </p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="flex items-center gap-6 text-sm">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-white">{totalDevices}</p>
-            <p className="text-dark-400">Devices</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-400">{onDevices}</p>
-            <p className="text-dark-400">Active</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
-            <p className="text-dark-400">Off</p>
+        <div className="flex items-center gap-6">
+          {/* Edit-mode toggle: off by default, so cards act as controls. */}
+          <button
+            onClick={() => setEditMode((v) => !v)}
+            className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+              editMode
+                ? 'bg-primary-600 border-primary-500 text-white'
+                : 'bg-dark-700 border-dark-600 text-dark-300 hover:text-white'
+            }`}
+            title="Attiva/disattiva la modifica dei dispositivi"
+          >
+            {editMode ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            {editMode ? 'Fine' : 'Modifica'}
+          </button>
+
+          {/* Quick Stats */}
+          <div className="flex items-center gap-6 text-sm">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">{totalDevices}</p>
+              <p className="text-dark-400">Devices</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">{onDevices}</p>
+              <p className="text-dark-400">Active</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
+              <p className="text-dark-400">Off</p>
+            </div>
           </div>
         </div>
       </div>
@@ -126,9 +149,17 @@ function Dashboard() {
             room={room}
             devices={devicesByRoom[room.id] || []}
             defaultExpanded={room.id !== 'default' || sortedRooms.length === 1}
+            editMode={editMode}
+            onEdit={setConfiguringDevice}
           />
         ))}
       </div>
+
+      <DeviceConfigModal
+        device={configuringDevice}
+        isOpen={!!configuringDevice}
+        onClose={() => setConfiguringDevice(null)}
+      />
     </div>
   );
 }

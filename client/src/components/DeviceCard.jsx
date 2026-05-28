@@ -9,7 +9,8 @@ import {
   Activity,
   Thermometer,
   CircleDot,
-  Loader2
+  Loader2,
+  Pencil
 } from 'lucide-react';
 import { useToggleDevice } from '../hooks/useDevices';
 
@@ -35,7 +36,7 @@ const colorMap = {
   other: { on: 'text-dark-300', off: 'text-dark-500', bg: 'bg-dark-400/10' }
 };
 
-function DeviceCard({ device, compact = false }) {
+function DeviceCard({ device, compact = false, editMode = false, onEdit }) {
   const [isToggling, setIsToggling] = useState(false);
   const toggleDevice = useToggleDevice();
 
@@ -48,7 +49,13 @@ function DeviceCard({ device, compact = false }) {
   const DoorIcon = deviceType === 'door' ? (isOn ? DoorOpen : DoorClosed) : Icon;
   const ActualIcon = deviceType === 'door' ? DoorIcon : Icon;
 
-  const handleToggle = async () => {
+  const handleClick = async () => {
+    // In edit mode the card is an editing affordance, not a switch — clicking
+    // opens the config modal instead of actuating the device.
+    if (editMode) {
+      onEdit?.(device);
+      return;
+    }
     if (!device.is_controllable || isToggling) return;
 
     setIsToggling(true);
@@ -64,14 +71,17 @@ function DeviceCard({ device, compact = false }) {
   if (compact) {
     return (
       <button
-        onClick={handleToggle}
-        disabled={!device.is_controllable || isToggling}
+        onClick={handleClick}
+        disabled={!editMode && (!device.is_controllable || isToggling)}
         className={`
-          device-card card p-4 w-full text-left transition-all
-          ${isOn ? 'on' : ''}
-          ${device.is_controllable ? 'cursor-pointer hover:border-dark-600' : 'cursor-default opacity-75'}
+          device-card card p-4 w-full text-left transition-all relative
+          ${isOn && !editMode ? 'on' : ''}
+          ${editMode ? 'cursor-pointer hover:border-primary-500 ring-1 ring-primary-500/30' : (device.is_controllable ? 'cursor-pointer hover:border-dark-600' : 'cursor-default opacity-75')}
         `}
       >
+        {editMode && (
+          <span className="absolute top-2 right-2 text-primary-400"><Pencil className="w-3.5 h-3.5" /></span>
+        )}
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${isOn ? colors.bg : 'bg-dark-700'}`}>
             {isToggling ? (
@@ -94,14 +104,17 @@ function DeviceCard({ device, compact = false }) {
 
   return (
     <button
-      onClick={handleToggle}
-      disabled={!device.is_controllable || isToggling}
+      onClick={handleClick}
+      disabled={!editMode && (!device.is_controllable || isToggling)}
       className={`
-        device-card card p-6 w-full text-left transition-all
-        ${isOn ? 'on' : ''}
-        ${device.is_controllable ? 'cursor-pointer hover:border-dark-600' : 'cursor-default opacity-75'}
+        device-card card p-6 w-full text-left transition-all relative
+        ${isOn && !editMode ? 'on' : ''}
+        ${editMode ? 'cursor-pointer hover:border-primary-500 ring-1 ring-primary-500/30' : (device.is_controllable ? 'cursor-pointer hover:border-dark-600' : 'cursor-default opacity-75')}
       `}
     >
+      {editMode && (
+        <span className="absolute top-2 right-2 text-primary-400"><Pencil className="w-4 h-4" /></span>
+      )}
       <div className="flex flex-col items-center text-center">
         {/* Icon */}
         <div className={`p-4 rounded-2xl mb-4 ${isOn ? colors.bg : 'bg-dark-700'}`}>
