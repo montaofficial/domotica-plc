@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# SQLite database & WAL files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# Environment (real secrets - never commit)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Build outputs
+client/dist/
+
+# Logs
+*.log
+npm-debug.log*
+pm2-*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / agent metadata
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+
+# SSL certificates (place real certs here, never commit)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt

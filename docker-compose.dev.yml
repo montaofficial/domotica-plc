@@ -1,0 +1,20 @@
+# Development docker-compose with hot reload.
+# Usage: docker compose -f docker-compose.dev.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: domotica-plc-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=${PORT:-3000}
+    volumes:
+      - ./server:/app/server:ro
+      - ./client/src:/app/client/src:ro
+      - ./data:/app/data
+    network_mode: host
