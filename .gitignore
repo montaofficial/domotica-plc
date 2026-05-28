@@ -39,3 +39,4 @@ Thumbs.db
 nginx/ssl/*.pem
 nginx/ssl/*.key
 nginx/ssl/*.crt
+CLAUDE.md
