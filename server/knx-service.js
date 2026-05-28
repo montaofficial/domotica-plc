@@ -1,7 +1,26 @@
 import { KNXClient } from 'knxultimate';
 import { EventEmitter } from 'events';
+import os from 'node:os';
 import { v4 as uuidv4 } from 'uuid';
 import { devicesDb, groupAddressesDb, historyDb, deviceGroupLinksDb } from './database.js';
+
+// knxultimate 5.5.8 calls ipAddressHelper.getLocalAddress() unconditionally
+// and overwrites whatever we pass as `localIPAddress` (KNXClient.ts:462). It
+// only honors the `interface` option (NIC name). On hosts with multiple NICs
+// in different subnets (e.g. eno1 on the office LAN + vlan2 on the KNX LAN)
+// its heuristic picks the wrong one and the gateway never sees a reachable
+// source IP. Resolve the NIC that owns the configured KNX_LOCAL_IP and pass
+// it through, so the library binds the UDP socket to the correct interface.
+function resolveInterfaceForIp(ip) {
+  if (!ip) return undefined;
+  const ifaces = os.networkInterfaces();
+  for (const [name, addrs] of Object.entries(ifaces)) {
+    if (addrs?.some(a => a.family === 'IPv4' && a.address === ip)) {
+      return name;
+    }
+  }
+  return undefined;
+}
 
 class KNXService extends EventEmitter {
   constructor() {
@@ -17,11 +36,17 @@ class KNXService extends EventEmitter {
     if (!config.gatewayIp) {
       console.warn('[KNX] KNX_GATEWAY_IP is not set - the controller will keep trying to reach a placeholder gateway.');
     }
+    const iface = resolveInterfaceForIp(config.localIp);
+    if (config.localIp && !iface) {
+      console.warn(`[KNX] KNX_LOCAL_IP=${config.localIp} does not match any local interface — falling back to library heuristic.`);
+    }
+
     this.config = {
       hostProtocol: 'TunnelUDP',
       ipAddr: config.gatewayIp || '0.0.0.0',
       ipPort: config.gatewayPort || 3671,
       loglevel: config.logLevel || 'info',
+      ...(iface ? { interface: iface } : {}),
       ...(config.localIp ? { localIPAddress: config.localIp } : {})
     };
 
