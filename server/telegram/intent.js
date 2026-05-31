@@ -66,7 +66,11 @@ export function buildMatchers(lights, rooms) {
   return { lightFuse, roomFuse };
 }
 
-// Returns { type:'status' } | { type:'action', verb, residue, lightResults, roomResults }
+// "tutto / tutti / tutte" (optionally "i dispositivi", "le luci") signals a
+// whole-installation command when no specific room/light is meant.
+const ALL_RE = /\b(tutto|tutti|tutte)\b/;
+
+// Returns { type:'status' } | { type:'action', verb, residue, all, lightResults, roomResults }
 // where *Results are [{ item, score }] sorted ascending by score.
 export function parseIntent(text, { lightFuse, roomFuse }) {
   const normalized = normalize(text);
@@ -76,11 +80,12 @@ export function parseIntent(text, { lightFuse, roomFuse }) {
     return { type: 'status' };
   }
 
+  const all = ALL_RE.test(normalized);
   const residue = extractResidue(normalized);
   const lightResults = residue ? lightFuse.search(residue) : [];
   const roomResults = residue ? roomFuse.search(residue) : [];
 
-  return { type: 'action', verb, residue, lightResults, roomResults };
+  return { type: 'action', verb, residue, all, lightResults, roomResults };
 }
 
 export { VERBS };

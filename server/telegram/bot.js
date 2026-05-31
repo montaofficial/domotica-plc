@@ -162,12 +162,9 @@ export function registerHandlers({ bot, config, auth }) {
       return send(chatId, await buildStatusMessage(config.officeRoomIds));
     }
 
-    const { verb, residue, lightResults, roomResults } = intent;
+    const { verb, residue, all, lightResults, roomResults } = intent;
     if (!verb) {
       return send(chatId, { text: 'Vuoi accendere o spegnere? Es: "spegni sala riunioni".' });
-    }
-    if (!residue) {
-      return send(chatId, { text: 'Quale luce o stanza? (oppure /all_off, /list)' });
     }
 
     const validLights = lightResults.filter((r) => r.score <= 0.4);
@@ -175,15 +172,24 @@ export function registerHandlers({ bot, config, auth }) {
     const bestLight = validLights[0];
     const bestRoom = validRooms[0];
 
+    // A strong, explicit room match wins — e.g. "spegni tutte le luci di
+    // industries" means that room, even though "tutte" also looks like "all".
+    if (bestRoom && bestRoom.score < 0.3) {
+      return roomAction(chatId, verb, bestRoom.item, dataset);
+    }
+
+    // "accendi/spegni tutto" → every configured light, no confirmation.
+    if (all) {
+      return allAction(chatId, verb, dataset);
+    }
+
+    if (!residue) {
+      return send(chatId, { text: 'Quale luce o stanza? Es: "accendi ufficio alex", "spegni tutto".' });
+    }
+
     // 0 useful matches → suggestions (nearest neighbours, any score).
     if (!bestLight && !bestRoom) {
       return suggest(chatId, verb, text, lightResults, roomResults);
-    }
-
-    // A strong, explicit room match wins — e.g. "spegni industries" means the
-    // whole room, even though every light in it also matches via room_name.
-    if (bestRoom && bestRoom.score < 0.3) {
-      return roomAction(chatId, verb, bestRoom.item, dataset);
     }
 
     // Confident single light.
@@ -202,27 +208,28 @@ export function registerHandlers({ bot, config, auth }) {
     return disambiguate(chatId, verb, validLights.slice(0, 3).map((r) => r.item));
   }
 
+  // Whole-installation command: every configured light, executed directly.
+  async function allAction(chatId, verb, dataset) {
+    const lights = dataset.lights;
+    if (lights.length === 0) return send(chatId, { text: 'Nessuna luce configurata.' });
+    const res = await executeMulti(verb, lights);
+    if (res.offline) return send(chatId, { text: OFFLINE_MSG });
+    const v = verb === 'on' ? 'accese' : verb === 'off' ? 'spente' : 'invertite';
+    return send(chatId, { text: `✓ ${res.count} luci → ${v}.` });
+  }
+
+  // Room command — executed directly, no confirmation (per user preference).
   async function roomAction(chatId, verb, room, dataset) {
     const lights = dataset.lights.filter((l) => l.room_id === room.id);
     if (lights.length === 0) {
       return send(chatId, { text: `Nessuna luce configurata in ${esc(room.name)}.` });
-    }
-    if (lights.length > 5) {
-      setState(chatId, { kind: 'confirm', verb, lights, label: room.name });
-      const verbLabel = verb === 'on' ? 'accendere' : verb === 'off' ? 'spegnere' : 'invertire';
-      return send(chatId, {
-        text: `Vuoi *${verbLabel}* tutte le ${lights.length} luci di *${esc(room.name)}*?`,
-        reply_markup: { inline_keyboard: [[
-          { text: '✅ Conferma', callback_data: 'confirm' },
-          { text: '✖️ Annulla', callback_data: 'cancel' }
-        ]] }
-      });
     }
     const res = await executeMulti(verb, lights);
     if (res.offline) return send(chatId, { text: OFFLINE_MSG });
     return send(chatId, { text: `✓ ${res.count} luci di ${esc(room.name)} → ${verb === 'on' ? 'accese' : verb === 'off' ? 'spente' : 'invertite'}.` });
   }
 
+  // /all_off — executed directly, no confirmation.
   async function handleAllOff(chatId, roomArg) {
     const dataset = getDataset(config);
     let lights = dataset.lights;
@@ -235,14 +242,9 @@ export function registerHandlers({ bot, config, auth }) {
       lights = dataset.lights.filter((l) => l.room_id === m.item.id);
     }
     if (lights.length === 0) return send(chatId, { text: 'Nessuna luce da spegnere.' });
-    setState(chatId, { kind: 'confirm', verb: 'off', lights, label });
-    return send(chatId, {
-      text: `Spegnere *tutte le ${lights.length} luci* di *${esc(label)}*?`,
-      reply_markup: { inline_keyboard: [[
-        { text: '✅ Conferma', callback_data: 'confirm' },
-        { text: '✖️ Annulla', callback_data: 'cancel' }
-      ]] }
-    });
+    const res = await executeMulti('off', lights);
+    if (res.offline) return send(chatId, { text: OFFLINE_MSG });
+    return send(chatId, { text: `✓ ${res.count} luci di ${esc(label)} spente.` });
   }
 
   function disambiguate(chatId, verb, options) {
