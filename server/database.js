@@ -268,6 +268,42 @@ export const groupAddressesDb = {
     `).all(roomId);
   },
 
+  // Configured lights (the exact set the Telegram bot is allowed to see):
+  // device_type='light', named, and assigned to a real room. The unnamed
+  // auto-discovered GAs are intentionally excluded.
+  configuredLights() {
+    return db.prepare(`
+      SELECT ga.*, r.name AS room_name
+      FROM group_addresses ga
+      LEFT JOIN rooms r ON ga.room_id = r.id
+      WHERE ga.device_type = 'light'
+        AND ga.name IS NOT NULL
+        AND ga.room_id IS NOT NULL
+        AND ga.room_id != 'default'
+      ORDER BY r.sort_order, ga.name
+    `).all();
+  },
+
+  // Configured lights in the given rooms whose last-known state is ON. Used as
+  // the evening-report candidate set before each one is verified with a live
+  // GroupValueRead.
+  lightsCurrentlyOn(roomIds = []) {
+    if (!Array.isArray(roomIds) || roomIds.length === 0) return [];
+    const placeholders = roomIds.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT ga.*, r.name AS room_name
+      FROM group_addresses ga
+      LEFT JOIN rooms r ON ga.room_id = r.id
+      WHERE ga.device_type = 'light'
+        AND ga.name IS NOT NULL
+        AND ga.room_id IS NOT NULL
+        AND ga.room_id != 'default'
+        AND ga.room_id IN (${placeholders})
+        AND (ga.current_value = 'true' OR ga.current_value = '1')
+      ORDER BY r.name, ga.name
+    `).all(...roomIds);
+  },
+
   getConfigured() {
     return db.prepare(`
       SELECT ga.*, r.name as room_name

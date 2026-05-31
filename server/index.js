@@ -140,6 +140,12 @@ knxService.connect();
 // to telegrams on the existing EventEmitter without races.
 learnEngine.init();
 
+// Optional Telegram bot (in-process). Loaded dynamically AFTER KNX/learn init
+// so it runs last and a bootstrap failure can never block server startup. Inert
+// unless TELEGRAM_BOT_TOKEN is set.
+import('./telegram/index.js').catch((e) =>
+  console.error('[Telegram] failed to load module:', e?.message || e));
+
 // Periodic cleanup of old telegram history (keep 7 days)
 const cleanupInterval = setInterval(() => {
   try {
