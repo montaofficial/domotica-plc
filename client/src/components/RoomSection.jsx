@@ -67,7 +67,7 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
             <RoomIcon className="w-5 h-5 text-primary-400" />
           </div>
           <div className="text-left min-w-0">
-            <h2 className="font-semibold text-white truncate">{room.name}</h2>
+            <h2 className="font-semibold text-white truncate" title={room.name}>{room.name}</h2>
             <p className="text-xs text-dark-400 truncate">
               {devices.length} {devices.length === 1 ? 'dispositivo' : 'dispositivi'}
               {onCount > 0 && (

@@ -208,9 +208,9 @@ function Devices() {
                             <Icon className="w-4 h-4 text-primary-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-white">{device.name}</p>
+                            <p className="font-medium text-white break-words">{device.name}</p>
                             {device.description && (
-                              <p className="text-xs text-dark-400 truncate max-w-[200px]">
+                              <p className="text-xs text-dark-400 truncate max-w-[200px]" title={device.description}>
                                 {device.description}
                               </p>
                             )}

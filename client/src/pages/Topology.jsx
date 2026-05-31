@@ -73,11 +73,11 @@ function GaRow({ item, onSaveName, onConfigure }) {
           </div>
         ) : (
           <button
-            className="text-left text-sm text-dark-200 hover:text-white flex items-center gap-2 group w-full truncate"
+            className="text-left text-sm text-dark-200 hover:text-white flex items-center gap-2 group w-full"
             onClick={() => setEditing(true)}
-            title={c.rationale || ''}
+            title={item.name || ''}
           >
-            <span className="truncate">{item.name || <span className="text-dark-500">senza nome</span>}</span>
+            <span className="break-words">{item.name || <span className="text-dark-500">senza nome</span>}</span>
             <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 shrink-0" />
           </button>
         )}

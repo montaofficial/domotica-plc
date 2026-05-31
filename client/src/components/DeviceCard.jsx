@@ -91,7 +91,7 @@ function DeviceCard({ device, compact = false, editMode = false, onEdit }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-white truncate">
+            <p className="font-medium text-white break-words" title={device.name || device.address}>
               {device.name || device.address}
             </p>
             <p className="text-xs text-dark-400">{device.address}</p>
@@ -125,8 +125,8 @@ function DeviceCard({ device, compact = false, editMode = false, onEdit }) {
           )}
         </div>
 
-        {/* Name */}
-        <h3 className="font-semibold text-white mb-1 truncate w-full">
+        {/* Name (wraps fully so long names stay readable on every screen) */}
+        <h3 className="font-semibold text-white mb-1 w-full break-words leading-tight" title={device.name || ''}>
           {device.name || 'Dispositivo senza nome'}
         </h3>
 
