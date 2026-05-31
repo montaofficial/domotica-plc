@@ -7,6 +7,12 @@ class AuthError extends Error {
   }
 }
 
+// Global hook so the app can react to an expired/invalid session (401) from
+// anywhere — without it, queries just surface error cards and the user is
+// stuck "logged in" with no way back to the login screen.
+let onAuthError = null;
+export function setAuthErrorHandler(fn) { onAuthError = fn; }
+
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
 
@@ -22,6 +28,8 @@ async function request(endpoint, options = {}) {
   const response = await fetch(url, config);
 
   if (response.status === 401) {
+    // Don't fire on the status probe itself (that's how we check auth on load).
+    if (endpoint !== '/auth/status' && onAuthError) onAuthError();
     throw new AuthError('Authentication required');
   }
 

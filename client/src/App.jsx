@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { authApi } from './api';
+import { authApi, setAuthErrorHandler } from './api';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -49,6 +49,16 @@ function App() {
   useEffect(() => () => {
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
   }, []);
+
+  // Any 401 from the API (expired session) drops us back to the login screen
+  // instead of leaving the app stuck behind error cards.
+  useEffect(() => {
+    setAuthErrorHandler(() => {
+      setUser(null);
+      queryClient.clear();
+    });
+    return () => setAuthErrorHandler(null);
+  }, [queryClient]);
 
   // Check auth status on mount
   useEffect(() => {

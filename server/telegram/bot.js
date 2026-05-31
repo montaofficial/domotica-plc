@@ -60,7 +60,12 @@ function pastWord(bool) { return bool ? 'Acceso' : 'Spento'; }
 async function executeSingle(verb, light) {
   if (!knxService.isConnected()) return { offline: true };
   const bool = boolFor(verb, light);
-  knxService.write(light.address, bool, 'DPT1.001');
+  try {
+    knxService.write(light.address, bool, 'DPT1.001');
+  } catch (e) {
+    console.error('[Telegram] write failed for', light.address, e?.message || e);
+    return { offline: true };
+  }
   return { ok: true, bool, name: (light.name || '').trim() };
 }
 

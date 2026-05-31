@@ -22,20 +22,26 @@ function isOnHex(hex) {
 // candidate, i.e. ON). Same fallback when the gateway is offline.
 export async function getOnLights(roomIds) {
   const candidates = groupAddressesDb.lightsCurrentlyOn(roomIds);
-  const connected = knxService.isConnected();
+  if (!knxService.isConnected()) return candidates; // can't verify => trust DB
+
+  // Probe in small parallel batches: the reads are independent and each one
+  // burns its full timeout for command GAs (which never answer), so doing
+  // them serially would block /status and the report for ~14s. Concurrency is
+  // kept under the EventEmitter default maxListeners (10).
+  const CONCURRENCY = 6;
   const on = [];
-  for (const light of candidates) {
-    if (!connected) { on.push(light); continue; }
-    try {
-      const r = await knxService.readGroupValue(light.address, 800);
-      if (r.answered) {
-        if (isOnHex(r.hex)) on.push(light); // live truth; answered+off => stale, drop
-      } else {
-        on.push(light); // no readable state => trust DB (it said ON)
+  for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+    const batch = candidates.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async (light) => {
+      try {
+        const r = await knxService.readGroupValue(light.address, 800);
+        if (r.answered) return isOnHex(r.hex) ? light : null; // live truth; off => stale, drop
+        return light; // no readable state => trust DB (it said ON)
+      } catch {
+        return light; // read errored => trust DB
       }
-    } catch {
-      on.push(light); // read errored => trust DB
-    }
+    }));
+    for (const x of results) if (x) on.push(x);
   }
   return on;
 }

@@ -116,7 +116,7 @@ function Discovery({
               <table className="w-full">
                 <tbody className="divide-y divide-dark-700/50">
                   {recentTelegrams.slice(0, 20).map((t, i) => (
-                    <tr key={i} className="text-sm hover:bg-dark-700/30">
+                    <tr key={`${t.timestamp}-${t.src}-${t.dst}-${i}`} className="text-sm hover:bg-dark-700/30">
                       <td className="px-3 py-1.5 text-dark-400 whitespace-nowrap">
                         <Clock className="w-3 h-3 inline mr-1" />
                         {formatTime(t.timestamp)}
@@ -204,10 +204,7 @@ function Discovery({
             {recentAddresses.map((t) => (
               <button
                 key={t.dst}
-                onClick={() => {
-                  const device = discovered.find((d) => d.address === t.dst);
-                  if (device) setConfiguringDevice(device);
-                }}
+                onClick={() => handleConfigureDetection({ dst: t.dst, decodedValue: t.decodedValue })}
                 className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 rounded-lg text-sm transition-colors"
               >
                 <code className="text-primary-400">{t.dst}</code>

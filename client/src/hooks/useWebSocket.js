@@ -106,6 +106,8 @@ export function useWebSocket(onMessage) {
       wsRef.current.close();
       wsRef.current = null;
     }
+    // Reset the backoff budget so a later login reconnects with a clean slate.
+    reconnectAttemptsRef.current = 0;
     setConnected(false);
   }, []);
 

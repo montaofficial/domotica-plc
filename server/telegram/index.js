@@ -33,7 +33,16 @@ if (!token) {
 
     const bot = new TelegramBot(token, { polling: true });
     registerHandlers({ bot, config, auth });
-    startScheduler({ cron, bot, config, auth });
+    const task = startScheduler({ cron, bot, config, auth });
+
+    // Stop polling + cron on shutdown so the event loop can drain and the
+    // process exits promptly (otherwise PM2 restarts wait for the 10s force).
+    const stop = () => {
+      try { bot.stopPolling({ cancel: true }); } catch {}
+      try { task?.stop(); } catch {}
+    };
+    process.once('SIGTERM', stop);
+    process.once('SIGINT', stop);
 
     bot.getMe()
       .then((me) => console.log(`[Telegram] Bot started @${me.username}`))

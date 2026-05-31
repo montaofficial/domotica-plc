@@ -305,7 +305,11 @@ class KNXService extends EventEmitter {
       let settled = false;
       const onTelegram = (t) => {
         if (settled) return;
-        if (t.dst === address && (t.type === 'GroupResponse' || t.type === 'GroupWrite')) {
+        // Only a genuine read reply (GroupResponse) counts as "answered". A
+        // coincidental GroupWrite to the same address (busy bus, physical
+        // button press) must NOT be mistaken for the read's answer — that
+        // could drop a still-on light from the evening report.
+        if (t.dst === address && t.type === 'GroupResponse') {
           settled = true;
           this.off('telegram', onTelegram);
           clearTimeout(timer);
