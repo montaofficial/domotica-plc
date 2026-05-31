@@ -98,21 +98,20 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-dark-400">
-            {editMode
-              ? 'Modalità modifica: tocca un dispositivo per riconfigurarlo.'
-              : 'Controlla i dispositivi'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-6">
-          {/* Edit-mode toggle: off by default, so cards act as controls. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1 sm:mb-2">Dashboard</h1>
+            <p className="text-dark-400 text-sm">
+              {editMode
+                ? 'Modalità modifica: tocca un dispositivo per riconfigurarlo.'
+                : 'Controlla i dispositivi'}
+            </p>
+          </div>
+          {/* Edit toggle stays next to the title on mobile */}
           <button
             onClick={() => setEditMode((v) => !v)}
-            className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+            className={`shrink-0 flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors sm:order-2 ${
               editMode
                 ? 'bg-primary-600 border-primary-500 text-white'
                 : 'bg-dark-700 border-dark-600 text-dark-300 hover:text-white'
@@ -122,21 +121,21 @@ function Dashboard() {
             {editMode ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
             {editMode ? 'Fine' : 'Modifica'}
           </button>
+        </div>
 
-          {/* Quick Stats */}
-          <div className="flex items-center gap-6 text-sm">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">{totalDevices}</p>
-              <p className="text-dark-400">Dispositivi</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-400">{onDevices}</p>
-              <p className="text-dark-400">Accese</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
-              <p className="text-dark-400">Spente</p>
-            </div>
+        {/* Quick Stats */}
+        <div className="flex items-center gap-6 text-sm sm:order-1">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-white">{totalDevices}</p>
+            <p className="text-dark-400">Dispositivi</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-400">{onDevices}</p>
+            <p className="text-dark-400">Accese</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
+            <p className="text-dark-400">Spente</p>
           </div>
         </div>
       </div>

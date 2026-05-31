@@ -61,14 +61,14 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
       <div className="w-full flex items-center justify-between p-4">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-3 flex-1 text-left hover:opacity-90 transition-opacity"
+          className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition-opacity"
         >
-          <div className="p-2 bg-dark-700 rounded-lg">
+          <div className="p-2 bg-dark-700 rounded-lg shrink-0">
             <RoomIcon className="w-5 h-5 text-primary-400" />
           </div>
-          <div className="text-left">
-            <h2 className="font-semibold text-white">{room.name}</h2>
-            <p className="text-xs text-dark-400">
+          <div className="text-left min-w-0">
+            <h2 className="font-semibold text-white truncate">{room.name}</h2>
+            <p className="text-xs text-dark-400 truncate">
               {devices.length} {devices.length === 1 ? 'dispositivo' : 'dispositivi'}
               {onCount > 0 && (
                 <span className="text-green-400"> · {onCount} {onCount === 1 ? 'accesa' : 'accese'}</span>
@@ -77,7 +77,7 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
           </div>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Per-room bulk ON/OFF (hidden in edit mode) */}
           {!editMode && controllable.length > 0 && (
             <div className="flex items-center gap-1">
