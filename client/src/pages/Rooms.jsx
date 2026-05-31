@@ -41,11 +41,11 @@ function Rooms() {
 
   const handleDelete = async (room) => {
     if (room.id === 'default') {
-      alert('Cannot delete the default room');
+      alert('Impossibile eliminare la stanza predefinita');
       return;
     }
 
-    if (!confirm(`Delete "${room.name}"? Devices in this room will be moved to Uncategorized.`)) {
+    if (!confirm(`Eliminare la stanza "${room.name}"? I dispositivi passeranno a Non categorizzati.`)) {
       return;
     }
 
@@ -69,7 +69,7 @@ function Rooms() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400">Failed to load rooms</p>
+          <p className="text-red-400">Caricamento stanze non riuscito</p>
         </div>
       </div>
     );
@@ -87,15 +87,15 @@ function Rooms() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Rooms</h1>
-          <p className="text-dark-400">Organize your devices by room</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Stanze</h1>
+          <p className="text-dark-400">Organizza i tuoi dispositivi per stanza</p>
         </div>
         <button
           onClick={() => setIsAddingRoom(true)}
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Room
+          Aggiungi stanza
         </button>
       </div>
 
@@ -119,11 +119,11 @@ function Rooms() {
                     <h3 className="font-semibold text-white">
                       {room.name}
                       {isDefault && (
-                        <span className="ml-2 text-xs text-dark-400">(System)</span>
+                        <span className="ml-2 text-xs text-dark-400">(Sistema)</span>
                       )}
                     </h3>
                     <p className="text-sm text-dark-400">
-                      {room.device_count || 0} device{room.device_count !== 1 ? 's' : ''}
+                      {room.device_count || 0} dispositiv{room.device_count !== 1 ? 'i' : 'o'}
                     </p>
                   </div>
                 </div>
@@ -134,14 +134,14 @@ function Rooms() {
                       <button
                         onClick={() => setEditingRoom(room)}
                         className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
-                        title="Edit"
+                        title="Modifica"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(room)}
                         className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
-                        title="Delete"
+                        title="Elimina"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -153,7 +153,7 @@ function Rooms() {
               {room.sort_order > 0 && !isDefault && (
                 <div className="mt-3 pt-3 border-t border-dark-700">
                   <p className="text-xs text-dark-500">
-                    Sort order: {room.sort_order}
+                    Ordine: {room.sort_order}
                   </p>
                 </div>
               )}
@@ -166,17 +166,17 @@ function Rooms() {
       {rooms.length === 1 && rooms[0].id === 'default' && (
         <div className="card p-12 text-center">
           <Home className="w-16 h-16 text-dark-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No Custom Rooms</h2>
+          <h2 className="text-xl font-semibold text-white mb-2">Nessuna stanza personalizzata</h2>
           <p className="text-dark-400 mb-6 max-w-md mx-auto">
-            Create rooms to organize your devices by location. Devices without a room
-            will appear in the default "Uncategorized" room.
+            Crea stanze per organizzare i tuoi dispositivi per posizione. I dispositivi senza stanza
+            compariranno nella stanza predefinita "Non categorizzati".
           </p>
           <button
             onClick={() => setIsAddingRoom(true)}
             className="btn-primary inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Create First Room
+            Crea la prima stanza
           </button>
         </div>
       )}

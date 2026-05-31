@@ -127,7 +127,7 @@ function DeviceCard({ device, compact = false, editMode = false, onEdit }) {
 
         {/* Name */}
         <h3 className="font-semibold text-white mb-1 truncate w-full">
-          {device.name || 'Unnamed Device'}
+          {device.name || 'Dispositivo senza nome'}
         </h3>
 
         {/* Address */}
@@ -142,9 +142,9 @@ function DeviceCard({ device, compact = false, editMode = false, onEdit }) {
           }
         `}>
           {deviceType === 'door'
-            ? (isOn ? 'Open' : 'Closed')
+            ? (isOn ? 'Aperta' : 'Chiusa')
             : deviceType === 'sensor'
-              ? (isOn ? 'Active' : 'Inactive')
+              ? (isOn ? 'Attivo' : 'Inattivo')
               : (isOn ? 'ON' : 'OFF')
           }
         </div>

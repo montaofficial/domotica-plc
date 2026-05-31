@@ -14,10 +14,10 @@ import {
 
 const navItems = [
   { to: '/', icon: Home, label: 'Dashboard' },
-  { to: '/devices', icon: LayoutGrid, label: 'Devices' },
-  { to: '/rooms', icon: Layers, label: 'Rooms' },
+  { to: '/devices', icon: LayoutGrid, label: 'Dispositivi' },
+  { to: '/rooms', icon: Layers, label: 'Stanze' },
   { to: '/discovery', icon: Radio, label: 'Discovery' },
-  { to: '/topology', icon: Network, label: 'Topology' }
+  { to: '/topology', icon: Network, label: 'Topologia' }
 ];
 
 function Layout({ children, connected, knxStatus, user, onLogout }) {
@@ -33,7 +33,7 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">KNX Controller</h1>
-              <p className="text-xs text-dark-400">Home Automation</p>
+              <p className="text-xs text-dark-400">Domotica</p>
             </div>
           </div>
         </div>
@@ -71,12 +71,12 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
                 {connected ? (
                   <>
                     <Wifi className="w-4 h-4 text-green-500" />
-                    <span className="text-green-500">Connected</span>
+                    <span className="text-green-500">Connesso</span>
                   </>
                 ) : (
                   <>
                     <WifiOff className="w-4 h-4 text-red-500" />
-                    <span className="text-red-500">Disconnected</span>
+                    <span className="text-red-500">Disconnesso</span>
                   </>
                 )}
               </div>
@@ -120,7 +120,7 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
               <button
                 onClick={onLogout}
                 className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
-                title="Logout"
+                title="Esci"
               >
                 <LogOut className="w-4 h-4" />
               </button>

@@ -64,7 +64,7 @@ function Dashboard() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400">Failed to load devices</p>
+          <p className="text-red-400">Caricamento dispositivi fallito</p>
           <p className="text-sm text-dark-400 mt-2">{error.message}</p>
         </div>
       </div>
@@ -76,19 +76,19 @@ function Dashboard() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-dark-400">Control your smart home devices</p>
+          <p className="text-dark-400">Controlla i dispositivi</p>
         </div>
 
         <div className="card p-12 text-center">
           <Radio className="w-16 h-16 text-dark-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No Configured Devices</h2>
+          <h2 className="text-xl font-semibold text-white mb-2">Nessun dispositivo configurato</h2>
           <p className="text-dark-400 mb-6 max-w-md mx-auto">
-            Devices are automatically discovered when they send telegrams on the KNX bus.
-            Go to the Discovery page to configure discovered devices.
+            I dispositivi vengono scoperti automaticamente quando inviano telegrammi sul bus KNX.
+            Vai alla pagina Discovery per configurarli.
           </p>
           <Link to="/discovery" className="btn-primary inline-flex items-center gap-2">
             <Radio className="w-4 h-4" />
-            View Discovery
+            Vai a Discovery
           </Link>
         </div>
       </div>
@@ -104,7 +104,7 @@ function Dashboard() {
           <p className="text-dark-400">
             {editMode
               ? 'Modalità modifica: tocca un dispositivo per riconfigurarlo.'
-              : 'Control your smart home devices'}
+              : 'Controlla i dispositivi'}
           </p>
         </div>
 
@@ -127,15 +127,15 @@ function Dashboard() {
           <div className="flex items-center gap-6 text-sm">
             <div className="text-center">
               <p className="text-2xl font-bold text-white">{totalDevices}</p>
-              <p className="text-dark-400">Devices</p>
+              <p className="text-dark-400">Dispositivi</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-green-400">{onDevices}</p>
-              <p className="text-dark-400">Active</p>
+              <p className="text-dark-400">Accese</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
-              <p className="text-dark-400">Off</p>
+              <p className="text-dark-400">Spente</p>
             </div>
           </div>
         </div>

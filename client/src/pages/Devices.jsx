@@ -58,7 +58,7 @@ function Devices() {
   });
 
   const handleDelete = async (device) => {
-    if (!confirm(`Delete "${device.name || device.address}"? This cannot be undone.`)) {
+    if (!confirm(`Eliminare "${device.name || device.address}"? L'operazione è irreversibile.`)) {
       return;
     }
 
@@ -82,7 +82,7 @@ function Devices() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400">Failed to load devices</p>
+          <p className="text-red-400">Caricamento dispositivi fallito</p>
         </div>
       </div>
     );
@@ -95,15 +95,15 @@ function Devices() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Devices</h1>
-          <p className="text-dark-400">Manage your configured KNX devices</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Dispositivi</h1>
+          <p className="text-dark-400">Gestisci i tuoi dispositivi KNX configurati</p>
         </div>
         <button
           onClick={() => setIsAddingDevice(true)}
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Device
+          Aggiungi dispositivo
         </button>
       </div>
 
@@ -118,7 +118,7 @@ function Devices() {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search devices..."
+                placeholder="Cerca dispositivi…"
                 className="input pl-10"
               />
             </div>
@@ -132,7 +132,7 @@ function Devices() {
               onChange={e => setTypeFilter(e.target.value)}
               className="select w-40"
             >
-              <option value="all">All Types</option>
+              <option value="all">Tutti i tipi</option>
               {deviceTypes.map(type => (
                 <option key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -148,7 +148,7 @@ function Devices() {
               onChange={e => setRoomFilter(e.target.value)}
               className="select w-40"
             >
-              <option value="all">All Rooms</option>
+              <option value="all">Tutte le stanze</option>
               {rooms.map(room => (
                 <option key={room.id} value={room.id}>
                   {room.name}
@@ -166,22 +166,22 @@ function Devices() {
             <thead className="bg-dark-700">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Device
+                  Dispositivo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Address
+                  Indirizzo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Type
+                  Tipo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Room
+                  Stanza
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Status
+                  Stato
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-dark-400 uppercase tracking-wider">
-                  Actions
+                  Azioni
                 </th>
               </tr>
             </thead>
@@ -190,8 +190,8 @@ function Devices() {
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-dark-400">
                     {searchQuery || typeFilter !== 'all' || roomFilter !== 'all'
-                      ? 'No devices match your filters'
-                      : 'No configured devices yet. Add a device manually or configure discovered devices.'}
+                      ? 'Nessun dispositivo corrisponde ai filtri'
+                      : 'Nessun dispositivo configurato. Aggiungine uno manualmente o configura quelli scoperti.'}
                   </td>
                 </tr>
               ) : (
@@ -229,7 +229,7 @@ function Devices() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-dark-300">
-                          {room?.name || 'Unassigned'}
+                          {room?.name || 'Senza stanza'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -249,14 +249,14 @@ function Devices() {
                           <button
                             onClick={() => setEditingDevice(device)}
                             className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg transition-colors"
-                            title="Edit"
+                            title="Modifica"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(device)}
                             className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
-                            title="Delete"
+                            title="Elimina"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

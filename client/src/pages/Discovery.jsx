@@ -53,7 +53,7 @@ function Discovery({
     }
   };
 
-  const formatTime = (ts) => new Date(ts).toLocaleTimeString('en-US', {
+  const formatTime = (ts) => new Date(ts).toLocaleTimeString('it-IT', {
     hour: '2-digit', minute: '2-digit', second: '2-digit'
   });
 
@@ -70,7 +70,7 @@ function Discovery({
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400">Failed to load discovered addresses</p>
+          <p className="text-red-400">Caricamento indirizzi scoperti fallito</p>
         </div>
       </div>
     );
@@ -137,7 +137,7 @@ function Discovery({
       {/* Discovered, unconfigured addresses (background discovery — keeps working as before) */}
       <div className="card">
         <div className="p-4 border-b border-dark-700">
-          <h2 className="font-semibold text-white">Unconfigured Addresses</h2>
+          <h2 className="font-semibold text-white">Indirizzi non configurati</h2>
           <p className="text-sm text-dark-400">
             Indirizzi visti sul bus ma non ancora configurati come dispositivi.
           </p>
@@ -153,18 +153,18 @@ function Discovery({
             <table className="w-full">
               <thead className="bg-dark-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Address</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Last Value</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Last Activity</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-dark-400 uppercase">Action</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Indirizzo</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Ultimo valore</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase">Ultima attività</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-dark-400 uppercase">Azione</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
                 {discovered.map((device) => {
                   const isOn = device.current_value === 'true' || device.current_value === '1';
                   const lastActivity = device.last_activity
-                    ? new Date(device.last_activity).toLocaleString()
-                    : 'Unknown';
+                    ? new Date(device.last_activity).toLocaleString('it-IT')
+                    : 'Sconosciuta';
                   return (
                     <tr key={device.id} className="hover:bg-dark-700/50">
                       <td className="px-4 py-3">
@@ -175,7 +175,7 @@ function Discovery({
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isOn ? 'bg-green-500/20 text-green-400' : 'bg-dark-700 text-dark-400'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${isOn ? 'bg-green-400' : 'bg-dark-500'}`} />
-                          {device.current_value !== null ? (isOn ? 'ON' : 'OFF') : 'Unknown'}
+                          {device.current_value !== null ? (isOn ? 'ON' : 'OFF') : 'Sconosciuto'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-dark-400">{lastActivity}</td>
@@ -185,7 +185,7 @@ function Discovery({
                           className="btn-primary text-sm py-1.5"
                         >
                           <Settings className="w-4 h-4 mr-1 inline" />
-                          Configure
+                          Configura
                         </button>
                       </td>
                     </tr>

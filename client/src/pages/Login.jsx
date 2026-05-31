@@ -18,8 +18,8 @@ function Login({ onLogin }) {
       onLogin(result.user);
     } catch (err) {
       setError(err.message === 'Invalid credentials'
-        ? 'Invalid username or password'
-        : 'Login failed. Please try again.'
+        ? 'Nome utente o password non validi'
+        : 'Accesso non riuscito. Riprova.'
       );
     } finally {
       setLoading(false);
@@ -35,13 +35,13 @@ function Login({ onLogin }) {
             <Home className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">KNX Controller</h1>
-          <p className="text-dark-400 mt-1">Home Automation</p>
+          <p className="text-dark-400 mt-1">Domotica</p>
         </div>
 
         {/* Login Card */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-white mb-6 text-center">
-            Sign in to continue
+            Accedi per continuare
           </h2>
 
           {error && (
@@ -53,7 +53,7 @@ function Login({ onLogin }) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Username</label>
+              <label className="label">Nome utente</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
                 <input
@@ -61,7 +61,7 @@ function Login({ onLogin }) {
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   className="input pl-10"
-                  placeholder="Enter username"
+                  placeholder="Inserisci il nome utente"
                   required
                   autoFocus
                   autoComplete="username"
@@ -78,7 +78,7 @@ function Login({ onLogin }) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="input pl-10"
-                  placeholder="Enter password"
+                  placeholder="Inserisci la password"
                   required
                   autoComplete="current-password"
                 />
@@ -93,10 +93,10 @@ function Login({ onLogin }) {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Signing in...
+                  Accesso…
                 </>
               ) : (
-                'Sign in'
+                'Accedi'
               )}
             </button>
           </form>

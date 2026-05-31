@@ -16,23 +16,23 @@ import {
 } from 'lucide-react';
 
 const deviceTypes = [
-  { value: 'light', label: 'Light', icon: Lightbulb },
-  { value: 'switch', label: 'Switch', icon: Power },
-  { value: 'fan', label: 'Fan', icon: Fan },
-  { value: 'door', label: 'Door', icon: DoorOpen },
-  { value: 'blind', label: 'Blind/Shutter', icon: Blinds },
-  { value: 'sensor', label: 'Sensor', icon: Activity },
-  { value: 'thermostat', label: 'Thermostat', icon: Thermometer },
-  { value: 'other', label: 'Other', icon: CircleDot }
+  { value: 'light', label: 'Luce', icon: Lightbulb },
+  { value: 'switch', label: 'Interruttore', icon: Power },
+  { value: 'fan', label: 'Ventola', icon: Fan },
+  { value: 'door', label: 'Porta', icon: DoorOpen },
+  { value: 'blind', label: 'Tapparella', icon: Blinds },
+  { value: 'sensor', label: 'Sensore', icon: Activity },
+  { value: 'thermostat', label: 'Termostato', icon: Thermometer },
+  { value: 'other', label: 'Altro', icon: CircleDot }
 ];
 
 const dataTypes = [
-  { value: 'DPT1', label: 'DPT1 - Switch (On/Off)' },
-  { value: 'DPT1.001', label: 'DPT1.001 - Switch' },
-  { value: 'DPT1.008', label: 'DPT1.008 - Up/Down' },
-  { value: 'DPT1.009', label: 'DPT1.009 - Open/Close' },
-  { value: 'DPT5', label: 'DPT5 - Percentage (0-100%)' },
-  { value: 'DPT9', label: 'DPT9 - Temperature' }
+  { value: 'DPT1', label: 'DPT1 - Interruttore (On/Off)' },
+  { value: 'DPT1.001', label: 'DPT1.001 - Interruttore' },
+  { value: 'DPT1.008', label: 'DPT1.008 - Su/Giù' },
+  { value: 'DPT1.009', label: 'DPT1.009 - Apri/Chiudi' },
+  { value: 'DPT5', label: 'DPT5 - Percentuale (0-100%)' },
+  { value: 'DPT9', label: 'DPT9 - Temperatura' }
 ];
 
 function AddDeviceModal({ isOpen, onClose }) {
@@ -91,7 +91,7 @@ function AddDeviceModal({ isOpen, onClose }) {
     // Validate address format
     const addressRegex = /^\d{1,2}\/\d{1,2}\/\d{1,3}$/;
     if (!addressRegex.test(formData.address)) {
-      setError('Invalid KNX address format. Use format like 1/2/3');
+      setError('Formato indirizzo non valido. Usa il formato 1/2/3');
       return;
     }
 
@@ -102,7 +102,7 @@ function AddDeviceModal({ isOpen, onClose }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Add Device Manually" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Aggiungi dispositivo manualmente" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400">
@@ -113,29 +113,29 @@ function AddDeviceModal({ isOpen, onClose }) {
 
         {/* KNX Address */}
         <div>
-          <label className="label">KNX Group Address *</label>
+          <label className="label">Indirizzo di gruppo KNX *</label>
           <input
             type="text"
             value={formData.address}
             onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-            placeholder="e.g., 1/2/3"
+            placeholder="es. 1/2/3"
             className="input"
             required
             autoFocus
           />
           <p className="text-xs text-dark-400 mt-1">
-            Format: main/middle/sub (e.g., 3/0/1)
+            Formato: main/middle/sub (es. 3/0/1)
           </p>
         </div>
 
         {/* Name */}
         <div>
-          <label className="label">Device Name *</label>
+          <label className="label">Nome dispositivo *</label>
           <input
             type="text"
             value={formData.name}
             onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="e.g., Living Room Light"
+            placeholder="es. Luce salotto"
             className="input"
             required
           />
@@ -143,11 +143,11 @@ function AddDeviceModal({ isOpen, onClose }) {
 
         {/* Description */}
         <div>
-          <label className="label">Description (optional)</label>
+          <label className="label">Descrizione (opzionale)</label>
           <textarea
             value={formData.description}
             onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Additional notes about this device"
+            placeholder="Note aggiuntive sul dispositivo"
             className="input"
             rows={2}
           />
@@ -155,7 +155,7 @@ function AddDeviceModal({ isOpen, onClose }) {
 
         {/* Device Type */}
         <div>
-          <label className="label">Device Type</label>
+          <label className="label">Tipo dispositivo</label>
           <div className="grid grid-cols-4 gap-2">
             {deviceTypes.map(type => {
               const Icon = type.icon;
@@ -183,7 +183,7 @@ function AddDeviceModal({ isOpen, onClose }) {
 
         {/* Data Type */}
         <div>
-          <label className="label">Data Type (DPT)</label>
+          <label className="label">Tipo dato (DPT)</label>
           <select
             value={formData.data_type}
             onChange={e => setFormData(prev => ({ ...prev, data_type: e.target.value }))}
@@ -199,13 +199,13 @@ function AddDeviceModal({ isOpen, onClose }) {
 
         {/* Room */}
         <div>
-          <label className="label">Room</label>
+          <label className="label">Stanza</label>
           <select
             value={formData.room_id}
             onChange={e => setFormData(prev => ({ ...prev, room_id: e.target.value }))}
             className="select"
           >
-            <option value="">No room assigned</option>
+            <option value="">Nessuna stanza</option>
             {rooms.map(room => (
               <option key={room.id} value={room.id}>
                 {room.name}
@@ -226,7 +226,7 @@ function AddDeviceModal({ isOpen, onClose }) {
             <div className="w-11 h-6 bg-dark-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600" />
           </label>
           <span className="text-sm text-dark-300">
-            Allow control from dashboard
+            Controllabile dalla dashboard
           </span>
         </div>
 
@@ -237,14 +237,14 @@ function AddDeviceModal({ isOpen, onClose }) {
             onClick={handleClose}
             className="btn-secondary"
           >
-            Cancel
+            Annulla
           </button>
           <button
             type="submit"
             disabled={createDevice.isPending || !formData.address || !formData.name}
             className="btn-primary"
           >
-            {createDevice.isPending ? 'Adding...' : 'Add Device'}
+            {createDevice.isPending ? 'Aggiunta…' : 'Aggiungi dispositivo'}
           </button>
         </div>
       </form>
