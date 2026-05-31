@@ -14,19 +14,27 @@ function isOnHex(hex) {
   return (parseInt(hex, 16) & 0x01) === 1;
 }
 
-// Candidate lights (DB says ON) in the given rooms, each verified with a live
-// GroupValueRead. Excludes ones the gateway doesn't answer for (unknown state)
-// and ones that answer OFF (stale DB value). Returns the verified-on list.
+// Candidate lights (DB current_value = ON) in the given rooms, refined with a
+// live GroupValueRead where possible. Hybrid policy: if a light answers the
+// read we trust the live value (this drops a stale DB "on"); if it does NOT
+// answer — which on this installation is every light, since they are mapped to
+// command GAs that don't report state — we fall back to the DB value (the
+// candidate, i.e. ON). Same fallback when the gateway is offline.
 export async function getOnLights(roomIds) {
   const candidates = groupAddressesDb.lightsCurrentlyOn(roomIds);
+  const connected = knxService.isConnected();
   const on = [];
   for (const light of candidates) {
-    if (!knxService.isConnected()) break;
+    if (!connected) { on.push(light); continue; }
     try {
       const r = await knxService.readGroupValue(light.address, 800);
-      if (r.answered && isOnHex(r.hex)) on.push(light);
+      if (r.answered) {
+        if (isOnHex(r.hex)) on.push(light); // live truth; answered+off => stale, drop
+      } else {
+        on.push(light); // no readable state => trust DB (it said ON)
+      }
     } catch {
-      // ignore a single failed probe
+      on.push(light); // read errored => trust DB
     }
   }
   return on;
@@ -50,16 +58,18 @@ export function buildReportMessage(lights) {
   return { text, reply_markup: { inline_keyboard } };
 }
 
-// /status — verify live and render. Empty => a friendly note (no buttons).
+// /status — render the currently-on lights (hybrid live/DB). When the gateway
+// is offline we still show the last-known DB state with a note.
 export async function buildStatusMessage(roomIds) {
-  if (!knxService.isConnected()) {
-    return { text: '⚠️ Gateway KNX offline, stato non disponibile.' };
-  }
   const on = await getOnLights(roomIds);
   if (on.length === 0) {
     return { text: '🌙 Nessuna luce d’ufficio risulta accesa al momento.' };
   }
-  return buildReportMessage(on);
+  const msg = buildReportMessage(on);
+  if (!knxService.isConnected()) {
+    msg.text = `⚠️ _Gateway offline — stato dal DB_\n${msg.text}`;
+  }
+  return msg;
 }
 
 // /list — every configured light, grouped by room, with last-known state.
