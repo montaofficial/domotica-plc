@@ -367,6 +367,7 @@ export const groupAddressesDb = {
     const fields = [];
     const values = [];
 
+    if (updates.address !== undefined) { fields.push('address = ?'); values.push(updates.address); }
     if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
     if (updates.description !== undefined) { fields.push('description = ?'); values.push(updates.description); }
     if (updates.device_type !== undefined) { fields.push('device_type = ?'); values.push(updates.device_type); }

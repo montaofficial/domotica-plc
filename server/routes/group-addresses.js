@@ -22,6 +22,7 @@ const createGroupAddressSchema = z.object({
 });
 
 const updateGroupAddressSchema = z.object({
+  address: z.string().regex(knxAddressRegex, 'Invalid KNX address format (e.g., 1/2/3)').optional(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   device_type: z.enum(['light', 'switch', 'fan', 'door', 'blind', 'sensor', 'thermostat', 'other']).optional(),
@@ -148,6 +149,24 @@ router.put('/:id', (req, res) => {
     }
 
     const validated = updateGroupAddressSchema.parse(req.body);
+
+    // Changing the KNX address remaps the device to a different bus address.
+    // The address column is UNIQUE, and auto-discovery creates a row for every
+    // address ever seen, so we resolve collisions: if the target address is
+    // held by another *configured* device, reject; if it's an unconfigured
+    // auto-discovered row, free it (delete) so this device can take it over.
+    if (validated.address && validated.address !== existing.address) {
+      const holder = groupAddressesDb.getByAddress(validated.address);
+      if (holder && holder.id !== existing.id) {
+        if (holder.name) {
+          return res.status(409).json({
+            error: `Indirizzo ${validated.address} già usato dal dispositivo "${holder.name}"`
+          });
+        }
+        groupAddressesDb.delete(holder.id);
+      }
+    }
+
     const ga = groupAddressesDb.update(req.params.id, validated);
 
     res.json(ga);

@@ -118,6 +118,29 @@ export function useControlDevice() {
   });
 }
 
+// Turn every controllable device in a room on or off, paced ~50ms apart so the
+// bus isn't flooded (same spacing the Telegram bot uses for multi-writes).
+export function useRoomBulkControl() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ devices, on }) => {
+      const targets = devices.filter((d) => d.is_controllable !== 0 && d.address);
+      let done = 0;
+      for (const d of targets) {
+        try {
+          await (on ? controlApi.on(d.address) : controlApi.off(d.address));
+          done++;
+        } catch {
+          // keep going; the others should still switch
+        }
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      return { done, total: targets.length, on };
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['groupAddresses'] })
+  });
+}
+
 export function useDeviceTypes() {
   return useQuery({
     queryKey: ['deviceTypes'],

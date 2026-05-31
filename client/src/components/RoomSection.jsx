@@ -10,10 +10,14 @@ import {
   DoorOpen,
   ArrowUpDown,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Power,
+  Loader2
 } from 'lucide-react';
 import { useState } from 'react';
 import DeviceCard from './DeviceCard';
+import { useRoomBulkControl } from '../hooks/useDevices';
+import { useToast } from './Toast';
 
 const roomIconMap = {
   home: Home,
@@ -31,38 +35,80 @@ const roomIconMap = {
 function RoomSection({ room, devices, defaultExpanded = true, editMode = false, onEdit }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const RoomIcon = roomIconMap[room.icon] || Home;
+  const bulk = useRoomBulkControl();
+  const toast = useToast();
 
   const onCount = devices.filter(d =>
     d.current_value === 'true' || d.current_value === '1'
   ).length;
+  const controllable = devices.filter(d => d.is_controllable !== 0 && d.address);
+
+  const runBulk = (on) => {
+    bulk.mutate(
+      { devices, on },
+      {
+        onSuccess: (res) => toast(
+          `${room.name}: ${res.done} ${res.done === 1 ? 'luce' : 'luci'} ${on ? 'accese' : 'spente'}`,
+          'success'
+        )
+      }
+    );
+  };
 
   return (
     <div className="card">
       {/* Room Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-dark-700/50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
+      <div className="w-full flex items-center justify-between p-4">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-3 flex-1 text-left hover:opacity-90 transition-opacity"
+        >
           <div className="p-2 bg-dark-700 rounded-lg">
             <RoomIcon className="w-5 h-5 text-primary-400" />
           </div>
           <div className="text-left">
             <h2 className="font-semibold text-white">{room.name}</h2>
             <p className="text-xs text-dark-400">
-              {devices.length} device{devices.length !== 1 ? 's' : ''}
+              {devices.length} {devices.length === 1 ? 'dispositivo' : 'dispositivi'}
               {onCount > 0 && (
-                <span className="text-green-400"> ({onCount} on)</span>
+                <span className="text-green-400"> · {onCount} {onCount === 1 ? 'accesa' : 'accese'}</span>
               )}
             </p>
           </div>
+        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Per-room bulk ON/OFF (hidden in edit mode) */}
+          {!editMode && controllable.length > 0 && (
+            <div className="flex items-center gap-1">
+              {bulk.isPending && <Loader2 className="w-4 h-4 text-dark-400 animate-spin" />}
+              <button
+                onClick={() => runBulk(true)}
+                disabled={bulk.isPending}
+                className="px-2.5 py-1 text-xs rounded-md border border-dark-600 text-dark-300 hover:text-green-300 hover:border-green-500/40 hover:bg-green-500/10 transition-colors disabled:opacity-50"
+                title={`Accendi tutte le luci di ${room.name}`}
+              >
+                <Power className="w-3 h-3 inline mr-1" />ON
+              </button>
+              <button
+                onClick={() => runBulk(false)}
+                disabled={bulk.isPending}
+                className="px-2.5 py-1 text-xs rounded-md border border-dark-600 text-dark-300 hover:text-red-300 hover:border-red-500/40 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                title={`Spegni tutte le luci di ${room.name}`}
+              >
+                <Power className="w-3 h-3 inline mr-1" />OFF
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 text-dark-400 hover:text-white"
+            aria-label={expanded ? 'Comprimi' : 'Espandi'}
+          >
+            {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
         </div>
-        {expanded ? (
-          <ChevronUp className="w-5 h-5 text-dark-400" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-dark-400" />
-        )}
-      </button>
+      </div>
 
       {/* Devices Grid */}
       {expanded && devices.length > 0 && (
@@ -77,7 +123,7 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
 
       {expanded && devices.length === 0 && (
         <div className="p-8 text-center text-dark-400 border-t border-dark-700">
-          No devices in this room
+          Nessun dispositivo in questa stanza
         </div>
       )}
     </div>
