@@ -86,6 +86,10 @@ class LearnEngine extends EventEmitter {
   startCalibration({ durationMs = DEFAULT_BASELINE_MS } = {}) {
     const dur = Math.max(MIN_BASELINE_MS, Math.min(MAX_BASELINE_MS, Number(durationMs) || DEFAULT_BASELINE_MS));
     if (this.state === 'learning') this.stopLearning();
+    // Restarting calibration while one is already running must clear the old
+    // timer + ticker first, otherwise the previous timeout truncates the new
+    // session and the previous interval leaks (accumulates on repeated starts).
+    if (this.state === 'calibrating') this._endCalibration('restarted');
 
     this.state = 'calibrating';
     this.calibration = {

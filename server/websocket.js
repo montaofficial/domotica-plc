@@ -183,4 +183,15 @@ export function getConnectedClientCount() {
   return clients.size;
 }
 
+// Terminate every client and close the server. Without this, server.close()
+// during shutdown waits forever on open WebSocket connections and the clean
+// database-close path is never reached (PM2 then SIGKILLs after its timeout).
+export function closeWebSocket() {
+  for (const client of clients) {
+    try { client.terminate(); } catch { /* ignore */ }
+  }
+  clients.clear();
+  try { wss?.close(); } catch { /* ignore */ }
+}
+
 export { broadcast };

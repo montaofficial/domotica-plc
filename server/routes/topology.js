@@ -69,8 +69,30 @@ function sweepCandidates() {
   return { candidates, pairs: [...pairs] };
 }
 
-// Per-GA evidence derived from the passive telegram history.
+// historyStats() scans up to 8000 rows and runs an O(n·window) co-activation
+// pass — hundreds of ms on a cold DB, and it blocks the single event-loop
+// thread. /evidence and /map are pure reads that don't need second-fresh data,
+// so cache the result briefly: back-to-back opens of the Topology view (or the
+// map+evidence pair) reuse one computation instead of freezing the server twice.
+let _historyStatsCache = { at: 0, value: null };
+const HISTORY_STATS_TTL_MS = 15_000;
+
 function historyStats() {
+  const now = Date.now();
+  if (_historyStatsCache.value && now - _historyStatsCache.at < HISTORY_STATS_TTL_MS) {
+    return _historyStatsCache.value;
+  }
+  const value = computeHistoryStats();
+  _historyStatsCache = { at: now, value };
+  return value;
+}
+
+// Per-GA evidence derived from the passive telegram history.
+function computeHistoryStats() {
+  // Cap the correlation pass so a dense burst of near-simultaneous telegrams
+  // (same 1-second timestamp bucket) can't degenerate into an O(n²) freeze:
+  // once a row has this many partners inside the window we stop pairing it.
+  const MAX_PARTNERS_PER_ROW = 40;
   const rows = db.prepare(`
     SELECT src, dst, type, raw_hex, timestamp
     FROM telegram_history
@@ -101,9 +123,12 @@ function historyStats() {
   const corr = new Map(); // dst -> Map(otherDst -> count)
   for (let i = 0; i < chron.length; i++) {
     const a = chron[i];
+    let partners = 0;
     for (let j = i + 1; j < chron.length && chron[j].t - a.t <= CORR_WINDOW_MS; j++) {
+      if (partners >= MAX_PARTNERS_PER_ROW) break; // guard against O(n²) on bursts
       const b = chron[j];
       if (b.dst === a.dst) continue;
+      partners++;
       for (const [x, y] of [[a.dst, b.dst], [b.dst, a.dst]]) {
         let m = corr.get(x);
         if (!m) { m = new Map(); corr.set(x, m); }
@@ -168,19 +193,25 @@ function buildEvidence() {
 }
 
 function withZod(schema, handler) {
-  return (req, res) => {
+  return async (req, res) => {
     try {
       const body = schema.parse(req.body ?? {});
-      return handler(req, res, body);
+      // Await so a rejection from an async handler (e.g. the scan loop) is
+      // caught here instead of becoming an unhandledRejection = process crash.
+      return await handler(req, res, body);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid request', details: err.flatten() });
       }
       console.error('[topology] error:', err);
-      res.status(500).json({ error: err.message || 'Internal error' });
+      if (!res.headersSent) res.status(500).json({ error: 'Internal error' });
     }
   };
 }
+
+// Only one passive scan at a time: two overlapping scans double the GroupValueRead
+// load on the physical bus for no benefit.
+let scanInProgress = false;
 
 // ---- routes --------------------------------------------------------------
 
@@ -188,6 +219,9 @@ function withZod(schema, handler) {
 router.post('/scan', withZod(scanSchema, async (req, res, body) => {
   if (!knxService.isConnected()) {
     return res.status(409).json({ error: 'KNX not connected' });
+  }
+  if (scanInProgress) {
+    return res.status(409).json({ error: 'A scan is already running' });
   }
   const spacing = body.spacingMs ?? 120;
   const timeout = body.timeoutMs ?? 600;
@@ -202,12 +236,17 @@ router.post('/scan', withZod(scanSchema, async (req, res, body) => {
 
   console.log(`[topology] scan start: ${targets.length} GAs, spacing ${spacing}ms, timeout ${timeout}ms${sweepInfo ? ` (sweep +${sweepInfo.candidateCount})` : ''}`);
 
+  scanInProgress = true;
   let answered = 0;
-  for (const addr of targets) {
-    const r = await knxService.readGroupValue(addr, timeout);
-    gaInferenceDb.recordProbe(addr, { answered: r.answered, payloadLen: r.len, hex: r.hex });
-    if (r.answered) answered++;
-    await new Promise((res2) => setTimeout(res2, spacing));
+  try {
+    for (const addr of targets) {
+      const r = await knxService.readGroupValue(addr, timeout);
+      gaInferenceDb.recordProbe(addr, { answered: r.answered, payloadLen: r.len, hex: r.hex });
+      if (r.answered) answered++;
+      await new Promise((res2) => setTimeout(res2, spacing));
+    }
+  } finally {
+    scanInProgress = false;
   }
 
   console.log(`[topology] scan done: ${answered}/${targets.length} answered`);

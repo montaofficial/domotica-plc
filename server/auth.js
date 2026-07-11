@@ -74,13 +74,10 @@ export function validateCredentials(username, password) {
   );
 }
 
-// Express middleware for protecting routes
+// Express middleware for protecting routes. Mounted at '/api' AFTER the
+// public '/api/auth' and '/api/health' routes, so everything it sees requires
+// a valid token — no per-path allow-list is needed here.
 export function authMiddleware(req, res, next) {
-  // Skip auth for login endpoint
-  if (req.path === '/api/auth/login' || req.path === '/api/auth/status') {
-    return next();
-  }
-
   // Check for token in cookie or Authorization header
   let token = req.cookies?.token;
 
@@ -104,17 +101,13 @@ export function authMiddleware(req, res, next) {
   next();
 }
 
-// WebSocket authentication helper
+// WebSocket authentication helper. Cookie-only on purpose: the browser sends
+// the HttpOnly session cookie automatically on the WS handshake, and accepting
+// a token via query string would write a valid 24h JWT into any proxy/access
+// logs that record the request URL.
 export function authenticateWebSocket(request) {
-  // Try to get token from cookie
   const cookies = parseCookies(request.headers.cookie || '');
-  let token = cookies.token;
-
-  // Or from query string
-  if (!token) {
-    const url = new URL(request.url, `http://${request.headers.host}`);
-    token = url.searchParams.get('token');
-  }
+  const token = cookies.token;
 
   if (!token) {
     return null;

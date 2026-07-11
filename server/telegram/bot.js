@@ -12,11 +12,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // In-process, per-chat pending action (confirm / disambiguate). Lazily GC'd.
 const pendingState = new Map();
+let nonceCounter = 0;
 
 function setState(chatId, value) {
   const now = Date.now();
   for (const [k, v] of pendingState) if (v.expiresAt < now) pendingState.delete(k);
-  pendingState.set(Number(chatId), { ...value, expiresAt: now + STATE_TTL_MS });
+  // Each pending state gets a fresh nonce. Inline buttons carry it, so a tap on
+  // a stale keyboard (the user reformulated, overwriting the per-chat state)
+  // is rejected instead of resolving its index against the new options — which
+  // could otherwise actuate the wrong device.
+  const nonce = String(++nonceCounter);
+  pendingState.set(Number(chatId), { ...value, nonce, expiresAt: now + STATE_TTL_MS });
+  return nonce;
 }
 function getState(chatId) {
   const v = pendingState.get(Number(chatId));
@@ -249,9 +256,9 @@ export function registerHandlers({ bot, config, auth }) {
 
   function disambiguate(chatId, verb, options) {
     if (options.length === 0) return send(chatId, { text: 'Nessuna corrispondenza.' });
-    setState(chatId, { kind: 'disambiguate', verb, options });
+    const nonce = setState(chatId, { kind: 'disambiguate', verb, options });
     const inline_keyboard = options.map((o, i) => [
-      { text: o.name.trim(), callback_data: `dis:${i}` }
+      { text: o.name.trim(), callback_data: `dis:${nonce}:${i}` }
     ]);
     inline_keyboard.push([{ text: '✖️ Annulla', callback_data: 'cancel' }]);
     return send(chatId, { text: 'Quale intendi?', reply_markup: { inline_keyboard } });
@@ -266,9 +273,9 @@ export function registerHandlers({ bot, config, auth }) {
     if (pool.length === 0) {
       return send(chatId, { text: `Non ho capito "${esc(originalText)}". Prova con /list.` });
     }
-    setState(chatId, { kind: 'disambiguate', verb, options: pool.map((p) => p.item) });
+    const nonce = setState(chatId, { kind: 'disambiguate', verb, options: pool.map((p) => p.item) });
     const inline_keyboard = pool.map((p, i) => [
-      { text: `${p.kind === 'room' ? '🏠 ' : ''}${p.item.name.trim()}`, callback_data: `dis:${i}` }
+      { text: `${p.kind === 'room' ? '🏠 ' : ''}${p.item.name.trim()}`, callback_data: `dis:${nonce}:${i}` }
     ]);
     inline_keyboard.push([{ text: '✖️ Annulla', callback_data: 'cancel' }]);
     return send(chatId, {
@@ -343,9 +350,15 @@ export function registerHandlers({ bot, config, auth }) {
       }
 
       if (data.startsWith('dis:')) {
-        const idx = Number(data.slice(4));
+        // Format: dis:<nonce>:<idx>
+        const parts = data.split(':');
+        const nonce = parts[1];
+        const idx = Number(parts[2]);
         const st = getState(chatId);
-        if (!st || st.kind !== 'disambiguate' || !st.options[idx]) { await ack('Scaduto'); return editText('⏱️ Scelta scaduta.'); }
+        if (!st || st.kind !== 'disambiguate' || st.nonce !== nonce || !st.options[idx]) {
+          await ack('Scaduto');
+          return editText('⏱️ Scelta scaduta o non più valida.');
+        }
         clearState(chatId);
         const opt = st.options[idx];
         if (opt.kind === 'room') {

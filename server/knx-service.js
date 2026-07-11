@@ -30,6 +30,32 @@ class KNXService extends EventEmitter {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 10;
     this.reconnectDelay = 5000;
+    // Handle of the pending reconnect timer, so we never schedule two in
+    // parallel (the 'error' + 'disconnected' paths both call scheduleReconnect)
+    // and can cancel it on a clean shutdown.
+    this.reconnectTimer = null;
+    // Set on an intentional disconnect() so the resulting 'disconnected' event
+    // doesn't immediately schedule an unwanted reconnect during shutdown.
+    this.stopped = false;
+    // address -> { prev, at }: values written optimistically to the DB but not
+    // yet confirmed on the bus. If the client reports an error while a write is
+    // in flight we revert these, erring toward "still on" (see the error
+    // handler) — a missed OFF is worse than a spurious ON in the evening report.
+    this.pendingWrites = new Map();
+  }
+
+  // Safely dispose the current client. knxultimate's Disconnect() is async and
+  // rejects if the socket was already torn down (e.g. after a heartbeat loss);
+  // a bare call would surface as an unhandledRejection and kill the process on
+  // Node >= 20, so we swallow both sync throws and async rejections here.
+  safeDisconnectClient() {
+    if (!this.client) return;
+    try {
+      const r = this.client.Disconnect?.();
+      if (r && typeof r.then === 'function') r.catch(() => {});
+    } catch (e) {
+      // already disconnected — ignore
+    }
   }
 
   initialize(config) {
@@ -54,14 +80,7 @@ class KNXService extends EventEmitter {
   }
 
   createClient() {
-    if (this.client) {
-      try {
-        this.client.Disconnect?.();
-      } catch (e) {
-        // Ignore disconnect errors
-      }
-    }
-
+    this.safeDisconnectClient();
     this.client = new KNXClient(this.config);
     this.setupEventHandlers();
   }
@@ -77,6 +96,10 @@ class KNXService extends EventEmitter {
     this.client.on('disconnected', (reason) => {
       console.log('[KNX] Disconnected:', reason);
       this.connected = false;
+      // A dropped connection means any in-flight write may never have reached
+      // the bus. Roll those back so an unconfirmed OFF doesn't hide a light
+      // that's still physically on from the evening report.
+      this.revertPendingWrites('disconnected');
       this.emit('disconnected', reason);
       this.scheduleReconnect();
     });
@@ -112,10 +135,12 @@ class KNXService extends EventEmitter {
     const raw = npdu?.dataValue;
     const rawHex = raw ? raw.toString('hex') : '';
 
-    // Decode value
+    // Decode value. Only single-byte payloads are safely a DPT1 boolean; a
+    // multi-byte payload (DPT9 temperature, DPT5 percentage, …) is NOT a bit,
+    // so decoding its first byte as on/off would corrupt current_value in the
+    // DB. Leave those as null rather than inventing a boolean for them.
     let decodedValue = null;
-    if (raw && raw.length >= 1) {
-      // Simple DPT1 (boolean) decoding
+    if (raw && raw.length === 1) {
       decodedValue = (raw.readUInt8(0) & 0x01) === 1;
     }
 
@@ -138,6 +163,11 @@ class KNXService extends EventEmitter {
       raw_hex: rawHex,
       decoded_value: decodedValue !== null ? String(decodedValue) : null
     });
+
+    // Any bus activity on an address we just wrote confirms the telegram was
+    // actually delivered — drop it from the unconfirmed set so a later error
+    // can't wrongly revert it.
+    if (this.pendingWrites.has(dst)) this.pendingWrites.delete(dst);
 
     // Auto-discover devices and group addresses
     if (type === 'GroupWrite' || type === 'GroupResponse') {
@@ -192,6 +222,7 @@ class KNXService extends EventEmitter {
   }
 
   connect() {
+    this.stopped = false;
     if (this.connected) {
       console.log('[KNX] Already connected');
       return;
@@ -207,29 +238,68 @@ class KNXService extends EventEmitter {
   }
 
   disconnect() {
-    try {
-      this.client?.Disconnect?.();
-    } catch (error) {
-      // Ignore
+    // Intentional shutdown: stop retrying and cancel any pending reconnect so
+    // the process can exit cleanly and no orphan tunnel is left on the gateway.
+    this.stopped = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
+    this.safeDisconnectClient();
     this.connected = false;
   }
 
-  scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[KNX] Max reconnection attempts reached');
-      this.emit('reconnect_failed');
-      return;
+  // Revert recent DB values written but not yet confirmed on the bus. Only
+  // rolls back writes issued in the last few seconds (an old un-echoed write is
+  // almost certainly fine — command GAs just never echo — so reverting it would
+  // be a spurious flip). Emits state_change so the UI reflects the correction.
+  revertPendingWrites(reason) {
+    if (this.pendingWrites.size === 0) return;
+    const recentCutoff = Date.now() - 15_000;
+    let reverted = 0;
+    for (const [address, { prev, at }] of this.pendingWrites) {
+      if (at < recentCutoff) continue;
+      try {
+        groupAddressesDb.updateValue(address, prev);
+        this.emit('state_change', { address, value: prev === 'true' || prev === '1', rawHex: '', mapped: !!groupAddressesDb.getByAddress(address)?.name });
+        reverted++;
+      } catch (e) {
+        // best-effort; keep reverting the rest
+      }
     }
+    if (reverted > 0) console.warn(`[KNX] Reverted ${reverted} unconfirmed write(s) (${reason})`);
+    this.pendingWrites.clear();
+  }
+
+  scheduleReconnect() {
+    if (this.stopped) return;
+    // Dedupe: one pending reconnect at a time. Without this the error and
+    // disconnected paths can schedule parallel timers that race.
+    if (this.reconnectTimer) return;
 
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 5);
+    // Backoff grows then plateaus at 60s. We NEVER give up: a building
+    // controller must recover on its own whenever the gateway comes back,
+    // even after an outage far longer than the first few minutes.
+    const delay = Math.min(this.reconnectDelay * Math.min(this.reconnectAttempts, 6), 60000);
 
-    console.log(`[KNX] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    if (this.reconnectAttempts === this.maxReconnectAttempts) {
+      console.error(`[KNX] Still offline after ${this.reconnectAttempts} attempts — will keep retrying every ${Math.round(delay / 1000)}s until the gateway returns`);
+    } else {
+      console.log(`[KNX] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    }
 
-    setTimeout(() => {
-      this.createClient();
-      this.connect();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      // A throw here (e.g. KNXClient constructor failing because the KNX NIC
+      // vanished) would otherwise be an uncaughtException = process crash.
+      try {
+        this.createClient();
+        this.connect();
+      } catch (error) {
+        console.error('[KNX] Reconnect attempt failed:', error?.message || error);
+        this.scheduleReconnect();
+      }
     }, delay);
   }
 
@@ -246,6 +316,10 @@ class KNXService extends EventEmitter {
 
     console.log(`[KNX] Writing to ${address}: ${value} (${dataType})`);
 
+    // Remember the value we're overwriting so an aborted (un-ACKed) write can
+    // be rolled back by revertPendingWrites().
+    const prev = groupAddressesDb.getByAddress(address)?.current_value ?? null;
+
     try {
       // For DPT1 (boolean), use simple write
       if (dataType === 'DPT1' || dataType === 'DPT1.001') {
@@ -256,8 +330,16 @@ class KNXService extends EventEmitter {
         this.client.write(address, value, dataType);
       }
 
-      // Update local state
+      // Update local state (optimistic — confirmed when the bus echoes it, or
+      // rolled back if the client reports an error while it's still pending).
       groupAddressesDb.updateValue(address, String(value));
+      this.pendingWrites.set(address, { prev, at: Date.now() });
+      // Bound the pending set: drop anything older than 10s (either confirmed
+      // by a bus echo already, or so old that reverting it would be wrong).
+      const cutoff = Date.now() - 10_000;
+      for (const [addr, rec] of this.pendingWrites) {
+        if (rec.at < cutoff) this.pendingWrites.delete(addr);
+      }
 
       this.emit('write_success', { address, value, dataType });
       return true;

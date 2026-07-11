@@ -2,8 +2,19 @@ import { Router } from 'express';
 import { z } from 'zod';
 import knxService from '../knx-service.js';
 import { groupAddressesDb } from '../database.js';
+import { createRateLimiter } from '../utils/rate-limit.js';
 
 const router = Router();
+
+// Cap how fast a single client can actuate the bus. A legitimate bulk "all off"
+// (~56 lights paced 50ms apart) stays well under this; anything above is
+// hammering physical relays and gets a 429. This is app-level (the Node server
+// is reachable directly on the LAN, not only through nginx).
+router.use(createRateLimiter({
+  windowMs: 10_000,
+  max: 150,
+  message: 'Troppi comandi in poco tempo, attendi qualche secondo'
+}));
 
 // Validation schemas
 const writeSchema = z.object({
@@ -43,7 +54,7 @@ router.post('/:address', (req, res) => {
     }
 
     console.error('Error writing to KNX:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -70,7 +81,7 @@ router.post('/:address/toggle', (req, res) => {
     }
 
     console.error('Error toggling KNX address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -97,7 +108,7 @@ router.post('/:address/on', (req, res) => {
     }
 
     console.error('Error turning on:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -124,7 +135,7 @@ router.post('/:address/off', (req, res) => {
     }
 
     console.error('Error turning off:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -149,7 +160,7 @@ router.get('/:address/read', (req, res) => {
     }
 
     console.error('Error reading from KNX:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 

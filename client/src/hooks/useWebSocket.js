@@ -81,20 +81,43 @@ export function useWebSocket(onMessage) {
     if (!shouldConnectRef.current) {
       return;
     }
-
-    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error('[WS] Max reconnection attempts reached');
-      return;
+    if (reconnectTimeoutRef.current) {
+      return; // a reconnect is already pending
     }
 
     reconnectAttemptsRef.current++;
-    const delay = Math.min(1000 * reconnectAttemptsRef.current, 10000);
+    // Back off up to 15s, then keep retrying forever at that interval. Never
+    // give up: a wall tablet that outlived a server restart or a Wi-Fi blip
+    // must recover on its own, otherwise it shows stale state until a manual
+    // reload (and the user acts on lights that aren't in the state shown).
+    const delay = Math.min(1000 * reconnectAttemptsRef.current, 15000);
 
-    console.log(`[WS] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+    if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
+      console.log(`[WS] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+    }
 
     reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
       connect();
     }, delay);
+  }, [connect]);
+
+  // Force an immediate reconnect when the network returns or the tab comes back
+  // to the foreground. A phone that slept drops the TCP connection silently:
+  // the socket can look OPEN while being a dead "zombie", so we tear it down and
+  // reconnect on these signals instead of waiting for a backoff tick.
+  const kick = useCallback(() => {
+    if (!shouldConnectRef.current) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) return; // healthy, leave it
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    reconnectAttemptsRef.current = 0; // fresh budget on an explicit wake
+    try { ws?.close(); } catch { /* ignore */ }
+    connect();
   }, [connect]);
 
   const disconnect = useCallback(() => {
@@ -129,6 +152,20 @@ export function useWebSocket(onMessage) {
       disconnect();
     };
   }, [onMessage, connect, disconnect]);
+
+  // Wake the socket up when the network or tab state changes.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onVisible = () => { if (document.visibilityState === 'visible') kick(); };
+    window.addEventListener('online', kick);
+    window.addEventListener('focus', kick);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', kick);
+      window.removeEventListener('focus', kick);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [kick]);
 
   return {
     connected,

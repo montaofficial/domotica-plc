@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
     res.json(devicesWithGroups);
   } catch (error) {
     console.error('Error fetching devices:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -49,7 +49,7 @@ router.get('/:id', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching device:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -71,7 +71,7 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     console.error('Error updating device:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -94,7 +94,7 @@ router.get('/by-address/:address', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching device by address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 

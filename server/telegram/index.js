@@ -30,6 +30,9 @@ if (!token) {
     if (auth.allowedIds.length === 0) {
       console.warn('[Telegram] TELEGRAM_ALLOWED_CHAT_IDS is empty — every message will be ignored');
     }
+    if (config.officeRoomIds.length === 0) {
+      console.warn('[Telegram] TELEGRAM_OFFICE_ROOM_IDS is empty — /status and the evening report will always be empty (no rooms to watch)');
+    }
 
     const bot = new TelegramBot(token, { polling: true });
     registerHandlers({ bot, config, auth });

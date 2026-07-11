@@ -35,7 +35,7 @@ router.get('/', (req, res) => {
     res.json(roomsWithCounts);
   } catch (error) {
     console.error('Error fetching rooms:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -56,7 +56,7 @@ router.get('/:id', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching room:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -76,7 +76,7 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     console.error('Error creating room:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -103,7 +103,7 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     console.error('Error updating room:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -125,7 +125,7 @@ router.delete('/:id', (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting room:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 

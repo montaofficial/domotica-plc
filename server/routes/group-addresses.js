@@ -49,7 +49,7 @@ router.get('/', (req, res) => {
     res.json(addresses);
   } catch (error) {
     console.error('Error fetching group addresses:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -98,7 +98,7 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     console.error('Error creating group address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -109,7 +109,7 @@ router.get('/discovered', (req, res) => {
     res.json(addresses);
   } catch (error) {
     console.error('Error fetching discovered addresses:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -135,7 +135,7 @@ router.get('/:id', (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching group address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -175,7 +175,7 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
     console.error('Error updating group address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -193,7 +193,7 @@ router.delete('/:id', (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting group address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -210,7 +210,7 @@ router.get('/by-address/:address', (req, res) => {
     res.json(ga);
   } catch (error) {
     console.error('Error fetching group address by address:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 

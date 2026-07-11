@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useDiscoveredAddresses } from '../hooks/useDevices';
 import { useLearnState } from '../hooks/useLearn';
+import { getTelegrams, subscribeTelegrams } from '../lib/telegramFeed';
 import { groupAddressesApi } from '../api';
 import DeviceConfigModal from '../components/DeviceConfigModal';
 import LearnPanel from '../components/learn/LearnPanel';
@@ -14,7 +15,6 @@ import {
 } from 'lucide-react';
 
 function Discovery({
-  recentTelegrams = [],
   learnState: learnStateProp,
   learnCalibration,
   learnDetections = []
@@ -26,6 +26,11 @@ function Discovery({
 
   const [configuringDevice, setConfiguringDevice] = useState(null);
   const [showLiveBus, setShowLiveBus] = useState(false);
+
+  // Subscribe to the live telegram feed only while this page is mounted, so the
+  // 3-4/sec bus chatter re-renders Discovery alone and not the whole app.
+  const [recentTelegrams, setRecentTelegrams] = useState(getTelegrams);
+  useEffect(() => subscribeTelegrams(setRecentTelegrams), []);
 
   const recentAddresses = useMemo(() => {
     const addressMap = new Map();

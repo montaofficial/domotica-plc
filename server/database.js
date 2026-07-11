@@ -441,12 +441,28 @@ export const historyDb = {
   },
 
   cleanup(daysToKeep = 7) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - daysToKeep);
-    return db.prepare(`
+    // Compute the cutoff with SQLite's own datetime() so it matches the stored
+    // 'YYYY-MM-DD HH:MM:SS' format exactly. The previous toISOString() produced
+    // a 'T'-separated string whose lexicographic comparison silently trimmed up
+    // to an extra ~24h of history.
+    const cutoffRow = db.prepare(`SELECT datetime('now', ?) AS cutoff`).get(`-${daysToKeep} days`);
+    const cutoff = cutoffRow.cutoff;
+
+    // Delete in bounded chunks so purging a large backlog can't freeze the
+    // event loop in one giant synchronous statement.
+    const stmt = db.prepare(`
       DELETE FROM telegram_history
-      WHERE timestamp < ?
-    `).run(cutoff.toISOString());
+      WHERE id IN (
+        SELECT id FROM telegram_history WHERE timestamp < ? LIMIT 5000
+      )
+    `);
+    let total = 0;
+    for (;;) {
+      const res = stmt.run(cutoff);
+      total += res.changes;
+      if (res.changes < 5000) break;
+    }
+    return { changes: total };
   }
 };
 

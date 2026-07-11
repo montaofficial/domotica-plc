@@ -8,7 +8,7 @@ import { dirname, join } from 'path';
 
 import knxService from './knx-service.js';
 import learnEngine from './learn-engine.js';
-import { initializeWebSocket, getConnectedClientCount } from './websocket.js';
+import { initializeWebSocket, getConnectedClientCount, closeWebSocket } from './websocket.js';
 import { authMiddleware } from './auth.js';
 import authRouter from './routes/auth.js';
 import roomsRouter from './routes/rooms.js';
@@ -81,7 +81,7 @@ app.get('/api/history', (req, res) => {
 
     res.json(history);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Errore interno del server' });
   }
 });
 
@@ -146,8 +146,10 @@ learnEngine.init();
 import('./telegram/index.js').catch((e) =>
   console.error('[Telegram] failed to load module:', e?.message || e));
 
-// Periodic cleanup of old telegram history (keep 7 days)
-const cleanupInterval = setInterval(() => {
+// Periodic cleanup of old telegram history (keep 7 days). Runs shortly after
+// startup too — otherwise a process that restarts more often than every 24h
+// (deploys, max_memory_restart) would let the table grow without bound.
+function runHistoryCleanup() {
   try {
     const result = historyDb.cleanup(7);
     if (result.changes > 0) {
@@ -156,7 +158,9 @@ const cleanupInterval = setInterval(() => {
   } catch (error) {
     console.error('[Cleanup] Error:', error);
   }
-}, 24 * 60 * 60 * 1000);
+}
+const startupCleanupTimer = setTimeout(runHistoryCleanup, 60 * 1000);
+const cleanupInterval = setInterval(runHistoryCleanup, 24 * 60 * 60 * 1000);
 
 // Start server
 const PORT = parseInt(process.env.PORT) || 3000;
@@ -185,8 +189,15 @@ function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`\n[${signal}] Shutting down...`);
+  clearTimeout(startupCleanupTimer);
   clearInterval(cleanupInterval);
   knxService.disconnect();
+  // Terminate WebSocket clients first: otherwise server.close() waits on them
+  // forever and the clean database-close below never runs (PM2 SIGKILLs us).
+  closeWebSocket();
+  // Also drop idle HTTP keep-alive sockets so server.close() can complete
+  // promptly instead of waiting out each connection's keep-alive timeout.
+  server.closeAllConnections?.();
   server.close(() => {
     try {
       closeDatabase();
@@ -196,8 +207,10 @@ function shutdown(signal) {
     console.log('Server closed cleanly');
     process.exit(0);
   });
-  // Hard exit if close hangs.
+  // Hard exit if close hangs. Also close the DB here so the WAL is checkpointed
+  // even on the forced path (otherwise a hung close would skip it entirely).
   setTimeout(() => {
+    try { closeDatabase(); } catch { /* already closed */ }
     console.error('Forced exit after 10s');
     process.exit(1);
   }, 10000).unref();

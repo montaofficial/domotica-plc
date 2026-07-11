@@ -10,6 +10,7 @@ import Rooms from './pages/Rooms';
 import Discovery from './pages/Discovery';
 import Topology from './pages/Topology';
 import useWebSocket from './hooks/useWebSocket';
+import { pushTelegram } from './lib/telegramFeed';
 import { Loader2 } from 'lucide-react';
 
 const MAX_DETECTIONS_CACHED = 200;
@@ -23,7 +24,6 @@ function App() {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [recentTelegrams, setRecentTelegrams] = useState([]);
   const [learnState, setLearnState] = useState(null);
   const [learnCalibration, setLearnCalibration] = useState(null);
   const [learnDetections, setLearnDetections] = useState([]);
@@ -94,7 +94,9 @@ function App() {
   const handleWebSocketMessage = useCallback((message) => {
     switch (message.type) {
       case 'telegram':
-        setRecentTelegrams(prev => [message.data, ...prev.slice(0, 99)]);
+        // Into a module-level feed, not React state: this fires 3-4x/sec and
+        // must not re-render the app tree. Only the Discovery page subscribes.
+        pushTelegram(message.data);
         break;
 
       case 'state_change':
@@ -176,7 +178,6 @@ function App() {
             path="/discovery"
             element={
               <Discovery
-                recentTelegrams={recentTelegrams}
                 learnState={learnState}
                 learnCalibration={learnCalibration}
                 learnDetections={learnDetections}
