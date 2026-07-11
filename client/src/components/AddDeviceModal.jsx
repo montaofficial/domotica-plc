@@ -6,6 +6,7 @@ import Modal from './Modal';
 import {
   Lightbulb,
   Power,
+  Zap,
   Fan,
   DoorOpen,
   Blinds,
@@ -18,6 +19,7 @@ import {
 const deviceTypes = [
   { value: 'light', label: 'Luce', icon: Lightbulb },
   { value: 'switch', label: 'Interruttore', icon: Power },
+  { value: 'pulse', label: 'Pulsante', icon: Zap },
   { value: 'fan', label: 'Ventola', icon: Fan },
   { value: 'door', label: 'Porta', icon: DoorOpen },
   { value: 'blind', label: 'Tapparella', icon: Blinds },

@@ -1,44 +1,70 @@
+/* Self-hosted variable fonts — the app must work with no internet access. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/jetbrains-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter Variable', Inter, system-ui, sans-serif;
   }
 
   body {
     @apply bg-dark-900 text-dark-100 antialiased;
+    /* Faint ambient light from above, like a dim control room. */
+    background-image:
+      radial-gradient(1200px 500px at 50% -10%, rgba(58, 207, 222, 0.06), transparent 60%),
+      radial-gradient(900px 600px at 85% 110%, rgba(23, 180, 199, 0.04), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Space Grotesk Variable', 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Consistent, visible keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.400');
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-900;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-900;
   }
 
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply btn bg-primary-600 text-white hover:bg-primary-500 hover:shadow-glow-cyan active:scale-[0.98];
   }
 
   .btn-secondary {
-    @apply btn bg-dark-700 text-dark-100 hover:bg-dark-600 focus:ring-dark-500;
+    @apply btn bg-dark-700 text-dark-100 border border-dark-600 hover:bg-dark-600 hover:border-dark-500 active:scale-[0.98];
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-600 text-white hover:bg-red-500 active:scale-[0.98];
   }
 
   .btn-ghost {
     @apply btn bg-transparent text-dark-300 hover:bg-dark-800 hover:text-dark-100;
   }
 
+  /* Glass panel: semi-transparent surface + blur + hairline border. */
   .card {
-    @apply bg-dark-800 rounded-xl border border-dark-700 overflow-hidden;
+    @apply rounded-2xl border border-dark-600/60 overflow-hidden shadow-panel;
+    background: linear-gradient(180deg, rgba(22, 29, 46, 0.85), rgba(16, 22, 36, 0.85));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .input {
-    @apply w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 bg-dark-900/60 border border-dark-600 rounded-lg text-dark-100 placeholder-dark-400 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/70 focus:border-primary-500/50;
   }
 
   .select {
@@ -47,6 +73,26 @@
 
   .label {
     @apply block text-sm font-medium text-dark-300 mb-1;
+  }
+
+  /* KNX group address — bus data, always monospace, like an engraved tag. */
+  .ga-chip {
+    @apply font-mono text-[10px] tracking-tight text-dark-400 bg-dark-900/60 border border-dark-600/60 rounded px-1.5 py-0.5;
+  }
+
+  /* Loading placeholder blocks. */
+  .skeleton {
+    @apply rounded-xl bg-dark-700/60 relative overflow-hidden;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+  @keyframes skeleton-sweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
   }
 }
 
@@ -69,25 +115,42 @@
     background-color: theme('colors.dark.600');
     border-radius: 3px;
   }
+
+  /* Staggered entrance: parent sets .stagger-in, children get --i via style. */
+  .stagger-in > * {
+    animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
 }
 
-/* Device card animations */
+/* Device card behaviour */
 .device-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
 }
 
 .device-card:hover {
   transform: translateY(-2px);
 }
 
+.device-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* A lit lamp glows warm — the one loud element of the design. */
 .device-card.on {
-  @apply ring-2 ring-primary-500/50;
+  border-color: rgba(251, 191, 36, 0.4);
+  box-shadow: theme('boxShadow.lamp');
+}
+
+/* Live update flash when a telegram changes this card's state. */
+.device-card.ws-flash {
+  animation: ws-flash 0.9s ease-out 1;
 }
 
 /* Status indicator pulse */
 @keyframes pulse-status {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 
 .status-pulse {
@@ -101,4 +164,20 @@
 
 .toggle-knob {
   transition: transform 0.2s ease;
+}
+
+/* Accessibility: kill decorative motion for users who ask for less. */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in > *,
+  .device-card.ws-flash,
+  .skeleton::after,
+  .status-pulse {
+    animation: none !important;
+  }
+  .device-card,
+  .device-card:hover,
+  .device-card:active {
+    transition: none;
+    transform: none;
+  }
 }

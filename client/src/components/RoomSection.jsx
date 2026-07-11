@@ -38,10 +38,13 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
   const bulk = useRoomBulkControl();
   const toast = useToast();
 
+  // Pulse devices have no on/off state: they don't count as "accese" and the
+  // room-level bulk ON/OFF must never fire impulses at them.
   const onCount = devices.filter(d =>
-    d.current_value === 'true' || d.current_value === '1'
+    d.device_type !== 'pulse' &&
+    (d.current_value === 'true' || d.current_value === '1')
   ).length;
-  const controllable = devices.filter(d => d.is_controllable !== 0 && d.address);
+  const controllable = devices.filter(d => d.is_controllable !== 0 && d.address && d.device_type !== 'pulse');
 
   const runBulk = (on) => {
     bulk.mutate(
@@ -63,15 +66,15 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-90 transition-opacity"
         >
-          <div className="p-2 bg-dark-700 rounded-lg shrink-0">
-            <RoomIcon className="w-5 h-5 text-primary-400" />
+          <div className={`p-2 rounded-lg shrink-0 border transition-colors ${onCount > 0 ? 'bg-amber-400/10 border-amber-400/25' : 'bg-dark-700/80 border-dark-600/60'}`}>
+            <RoomIcon className={`w-5 h-5 ${onCount > 0 ? 'text-amber-300' : 'text-primary-400'}`} />
           </div>
           <div className="text-left min-w-0">
-            <h2 className="font-semibold text-white truncate" title={room.name}>{room.name}</h2>
+            <h2 className="font-display font-semibold text-white truncate" title={room.name}>{room.name}</h2>
             <p className="text-xs text-dark-400 truncate">
               {devices.length} {devices.length === 1 ? 'dispositivo' : 'dispositivi'}
               {onCount > 0 && (
-                <span className="text-green-400"> · {onCount} {onCount === 1 ? 'accesa' : 'accese'}</span>
+                <span className="text-amber-300"> · {onCount} {onCount === 1 ? 'accesa' : 'accese'}</span>
               )}
             </p>
           </div>
@@ -85,7 +88,7 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
               <button
                 onClick={() => runBulk(true)}
                 disabled={bulk.isPending}
-                className="px-2.5 py-1 text-xs rounded-md border border-dark-600 text-dark-300 hover:text-green-300 hover:border-green-500/40 hover:bg-green-500/10 transition-colors disabled:opacity-50"
+                className="px-2.5 py-1 text-xs font-medium rounded-full border border-dark-600 text-dark-300 hover:text-amber-300 hover:border-amber-400/40 hover:bg-amber-400/10 transition-colors disabled:opacity-50"
                 title={`Accendi tutte le luci di ${room.name}`}
               >
                 <Power className="w-3 h-3 inline mr-1" />ON
@@ -93,7 +96,7 @@ function RoomSection({ room, devices, defaultExpanded = true, editMode = false, 
               <button
                 onClick={() => runBulk(false)}
                 disabled={bulk.isPending}
-                className="px-2.5 py-1 text-xs rounded-md border border-dark-600 text-dark-300 hover:text-red-300 hover:border-red-500/40 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                className="px-2.5 py-1 text-xs font-medium rounded-full border border-dark-600 text-dark-300 hover:text-dark-100 hover:border-dark-400 hover:bg-dark-700 transition-colors disabled:opacity-50"
                 title={`Spegni tutte le luci di ${room.name}`}
               >
                 <Power className="w-3 h-3 inline mr-1" />OFF

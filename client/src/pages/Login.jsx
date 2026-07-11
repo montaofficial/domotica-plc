@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Lock, User, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, User, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { authApi } from '../api';
 
 function Login({ onLogin }) {
@@ -27,15 +27,15 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md animate-fade-up">
+        {/* Brand */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-5 shadow-glow-cyan">
+            <Zap className="w-8 h-8 text-dark-950" strokeWidth={2.5} />
           </div>
-          <h1 className="text-2xl font-bold text-white">KNX Controller</h1>
-          <p className="text-dark-400 mt-1">Domotica</p>
+          <h1 className="font-display text-3xl font-bold text-white tracking-tight">Fortitude</h1>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-dark-400 mt-2">Domotica KNX</p>
         </div>
 
         {/* Login Card */}
@@ -88,7 +88,7 @@ function Login({ onLogin }) {
             <button
               type="submit"
               disabled={loading || !username || !password}
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:hover:shadow-none"
             >
               {loading ? (
                 <>
@@ -102,8 +102,8 @@ function Login({ onLogin }) {
           </form>
         </div>
 
-        <p className="text-center text-dark-500 text-sm mt-6">
-          KNX Home Controller v1.0
+        <p className="text-center text-dark-500 text-sm mt-6 font-mono text-xs">
+          KNX Controller · v1.0
         </p>
       </div>
     </div>

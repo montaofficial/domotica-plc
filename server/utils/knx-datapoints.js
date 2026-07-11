@@ -161,6 +161,7 @@ export function suggestDeviceType(address) {
 export const DEVICE_TYPES = [
   { value: 'light', label: 'Light', icon: 'Lightbulb' },
   { value: 'switch', label: 'Switch', icon: 'Power' },
+  { value: 'pulse', label: 'Pulse button', icon: 'Zap' },
   { value: 'fan', label: 'Fan', icon: 'Fan' },
   { value: 'door', label: 'Door', icon: 'DoorOpen' },
   { value: 'blind', label: 'Blind/Shutter', icon: 'Blinds' },

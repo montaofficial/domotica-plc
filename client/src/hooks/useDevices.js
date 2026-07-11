@@ -118,13 +118,23 @@ export function useControlDevice() {
   });
 }
 
+// Momentary (pulse) devices: every press sends value=1, never a toggle — the
+// actuator reacts to the impulse itself, so alternating 0/1 would be wrong.
+export function usePulseDevice() {
+  return useMutation({
+    mutationFn: controlApi.on
+  });
+}
+
 // Turn every controllable device in a room on or off, paced ~50ms apart so the
 // bus isn't flooded (same spacing the Telegram bot uses for multi-writes).
 export function useRoomBulkControl() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ devices, on }) => {
-      const targets = devices.filter((d) => d.is_controllable !== 0 && d.address);
+      // Pulse devices are momentary buttons: a bulk ON/OFF would fire spurious
+      // impulses (e.g. toggling the HVAC), so they are always excluded here.
+      const targets = devices.filter((d) => d.is_controllable !== 0 && d.address && d.device_type !== 'pulse');
       let done = 0;
       for (const d of targets) {
         try {

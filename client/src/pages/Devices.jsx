@@ -5,6 +5,7 @@ import AddDeviceModal from '../components/AddDeviceModal';
 import {
   Lightbulb,
   Power,
+  Zap,
   Fan,
   DoorOpen,
   Blinds,
@@ -23,6 +24,7 @@ import {
 const iconMap = {
   light: Lightbulb,
   switch: Power,
+  pulse: Zap,
   fan: Fan,
   door: DoorOpen,
   blind: Blinds,
@@ -233,16 +235,23 @@ function Devices() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`
-                          inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
-                          ${isOn
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-dark-700 text-dark-400'
-                          }
-                        `}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isOn ? 'bg-green-400' : 'bg-dark-500'}`} />
-                          {isOn ? 'ON' : 'OFF'}
-                        </span>
+                        {device.device_type === 'pulse' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-primary-500/10 text-primary-300 border border-primary-500/20">
+                            <Zap className="w-3 h-3" />
+                            Impulso
+                          </span>
+                        ) : (
+                          <span className={`
+                            inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
+                            ${isOn
+                              ? 'bg-amber-400/15 text-amber-300'
+                              : 'bg-dark-700 text-dark-400'
+                            }
+                          `}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isOn ? 'bg-amber-400 shadow-lamp-sm' : 'bg-dark-500'}`} />
+                            {isOn ? 'ON' : 'OFF'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">

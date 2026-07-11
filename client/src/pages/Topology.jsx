@@ -126,7 +126,7 @@ function Topology() {
         <div>
           <h1 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
             <Network className="w-6 h-6 text-primary-400" />
-            Topology
+            Topologia
           </h1>
           <p className="text-dark-400 max-w-2xl">
             Mappa dedotta dell'infrastruttura, costruita in modo <strong>passivo</strong>:

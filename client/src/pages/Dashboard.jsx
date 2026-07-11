@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useRooms, useConfiguredDevices } from '../hooks/useDevices';
 import RoomSection from '../components/RoomSection';
 import DeviceConfigModal from '../components/DeviceConfigModal';
-import { Radio, Loader2, AlertCircle, Pencil, Check } from 'lucide-react';
+import { Radio, AlertCircle, Pencil, Check } from 'lucide-react';
 
 function Dashboard() {
   const { data: rooms = [], isLoading: roomsLoading, error: roomsError } = useRooms();
@@ -45,16 +45,33 @@ function Dashboard() {
   const isLoading = roomsLoading || devicesLoading;
   const error = roomsError || devicesError;
 
-  // Stats
+  // Stats — pulse devices are momentary buttons with no meaningful on/off
+  // state, so they count as devices but never as "on" or "off".
   const totalDevices = devices.length;
-  const onDevices = devices.filter(d =>
+  const switchable = devices.filter(d => d.device_type !== 'pulse');
+  const onDevices = switchable.filter(d =>
     d.current_value === 'true' || d.current_value === '1'
   ).length;
+  const offDevices = switchable.length - onDevices;
 
   if (isLoading) {
+    // Skeleton mirrors the real layout so the page doesn't jump when data lands.
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <div className="skeleton h-8 w-44" />
+            <div className="skeleton h-4 w-56" />
+          </div>
+          <div className="flex gap-3">
+            <div className="skeleton h-16 w-24" />
+            <div className="skeleton h-16 w-24" />
+            <div className="skeleton h-16 w-24" />
+          </div>
+        </div>
+        {[0, 1, 2].map(i => (
+          <div key={i} className="skeleton h-40 w-full" style={{ opacity: 1 - i * 0.25 }} />
+        ))}
       </div>
     );
   }
@@ -124,33 +141,37 @@ function Dashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="flex items-center gap-6 text-sm sm:order-1">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-white">{totalDevices}</p>
-            <p className="text-dark-400">Dispositivi</p>
+        <div className="flex items-center gap-2.5 sm:order-1">
+          <div className="card px-4 py-2.5 text-center min-w-[5.5rem]">
+            <p className="font-display text-2xl font-bold text-white leading-none">{totalDevices}</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-dark-400 mt-1.5">Dispositivi</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-400">{onDevices}</p>
-            <p className="text-dark-400">Accese</p>
+          <div className={`card px-4 py-2.5 text-center min-w-[5.5rem] ${onDevices > 0 ? 'border-amber-400/30' : ''}`}>
+            <p className={`font-display text-2xl font-bold leading-none flex items-center justify-center gap-1.5 ${onDevices > 0 ? 'text-amber-300' : 'text-white'}`}>
+              {onDevices > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-lamp-sm" />}
+              {onDevices}
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-dark-400 mt-1.5">Accese</p>
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-dark-400">{totalDevices - onDevices}</p>
-            <p className="text-dark-400">Spente</p>
+          <div className="card px-4 py-2.5 text-center min-w-[5.5rem]">
+            <p className="font-display text-2xl font-bold text-dark-300 leading-none">{offDevices}</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-dark-400 mt-1.5">Spente</p>
           </div>
         </div>
       </div>
 
       {/* Rooms */}
-      <div className="space-y-4">
-        {sortedRooms.map(room => (
-          <RoomSection
-            key={room.id}
-            room={room}
-            devices={devicesByRoom[room.id] || []}
-            defaultExpanded={room.id !== 'default' || sortedRooms.length === 1}
-            editMode={editMode}
-            onEdit={setConfiguringDevice}
-          />
+      <div className="space-y-4 stagger-in">
+        {sortedRooms.map((room, i) => (
+          <div key={room.id} style={{ '--i': i }}>
+            <RoomSection
+              room={room}
+              devices={devicesByRoom[room.id] || []}
+              defaultExpanded={room.id !== 'default' || sortedRooms.length === 1}
+              editMode={editMode}
+              onEdit={setConfiguringDevice}
+            />
+          </div>
         ))}
       </div>
 
