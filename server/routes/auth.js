@@ -40,12 +40,17 @@ router.post('/login', loginLimiter, (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    // The token is delivered ONLY as the HttpOnly cookie above. We deliberately
-    // don't echo it in the body: that would let page JS stash it in
-    // localStorage, turning any XSS into token exfiltration.
+    // The browser gets the token ONLY as the HttpOnly cookie above — echoing it
+    // in the body would let page JS stash it and turn any XSS into token theft.
+    // The native app (Capacitor WKWebView) can't use a cross-origin cookie, so
+    // it explicitly asks for the token via X-Native and stores it in the app's
+    // own storage. That request never runs in a browser tab, so the XSS vector
+    // doesn't apply.
+    const nativeClient = req.get('X-Native') === '1';
     res.json({
       success: true,
-      user: { username }
+      user: { username },
+      ...(nativeClient ? { token } : {})
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

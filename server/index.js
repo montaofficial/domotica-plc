@@ -33,8 +33,14 @@ const corsOrigins = (process.env.CORS_ORIGIN || '')
   .map(o => o.trim())
   .filter(Boolean);
 
+// The native iOS app (Capacitor) runs from these fixed WKWebView origins and
+// calls this server cross-origin. Always allow them so the app works without
+// extra config; the browser app is same-origin and unaffected.
+const NATIVE_ORIGINS = ['capacitor://localhost', 'ionic://localhost', 'https://localhost'];
+const allowedOrigins = [...corsOrigins, ...NATIVE_ORIGINS];
+
 app.use(cors({
-  origin: corsOrigins.length > 0 ? corsOrigins : false,
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '1mb' }));

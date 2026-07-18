@@ -1,3 +1,5 @@
+import { isNative, getServerUrl, getToken, setToken } from '../lib/native';
+
 const API_BASE = '/api';
 
 class AuthError extends Error {
@@ -14,15 +16,23 @@ let onAuthError = null;
 export function setAuthErrorHandler(fn) { onAuthError = fn; }
 
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  // Web: same-origin, relative '/api'. Native: absolute URL to the controller
+  // (its Tailscale address) — the bundled app can't use a relative path.
+  const base = await getServerUrl(); // '' on web
+  const url = `${base}${API_BASE}${endpoint}`;
+
+  // Native uses a Bearer token (no cross-origin cookie); web keeps the cookie.
+  const token = await getToken(); // null on web
+  const { headers: optHeaders, ...restOptions } = options;
 
   const config = {
+    credentials: 'include', // web: send the HttpOnly cookie
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
-    },
-    credentials: 'include', // Include cookies
-    ...options
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...optHeaders
+    }
   };
 
   const response = await fetch(url, config);
@@ -47,12 +57,23 @@ async function request(endpoint, options = {}) {
 
 // Auth API
 export const authApi = {
-  login: (username, password) =>
-    request('/auth/login', {
+  login: async (username, password) => {
+    // On native we ask the server to also return the token in the body (via
+    // X-Native) and store it; the web build gets cookie-only (token stays out
+    // of JS, XSS-safe).
+    const res = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
-    }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
+      body: JSON.stringify({ username, password }),
+      ...(isNative() ? { headers: { 'X-Native': '1' } } : {})
+    });
+    if (isNative() && res?.token) await setToken(res.token);
+    return res;
+  },
+  logout: async () => {
+    const res = await request('/auth/logout', { method: 'POST' }).catch(() => null);
+    if (isNative()) await setToken(null);
+    return res;
+  },
   status: () => request('/auth/status')
 };
 

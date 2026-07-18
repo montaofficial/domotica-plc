@@ -101,13 +101,24 @@ export function authMiddleware(req, res, next) {
   next();
 }
 
-// WebSocket authentication helper. Cookie-only on purpose: the browser sends
-// the HttpOnly session cookie automatically on the WS handshake, and accepting
-// a token via query string would write a valid 24h JWT into any proxy/access
-// logs that record the request URL.
+// WebSocket authentication helper.
+// - Browser: the HttpOnly session cookie rides along on the WS handshake.
+// - Native app: no cross-origin cookie, so the token is passed as the second
+//   WebSocket subprotocol ("bearer, <jwt>"). We deliberately do NOT accept a
+//   token in the query string — that would leak a valid JWT into proxy/access
+//   logs that record the URL. The subprotocol is a request header, not the URL.
 export function authenticateWebSocket(request) {
   const cookies = parseCookies(request.headers.cookie || '');
-  const token = cookies.token;
+  let token = cookies.token;
+
+  if (!token) {
+    const proto = request.headers['sec-websocket-protocol'];
+    if (proto) {
+      const parts = proto.split(',').map((s) => s.trim());
+      const i = parts.indexOf('bearer');
+      if (i >= 0 && parts[i + 1]) token = parts[i + 1];
+    }
+  }
 
   if (!token) {
     return null;

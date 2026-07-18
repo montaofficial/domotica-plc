@@ -7,7 +7,14 @@ let wss = null;
 const clients = new Set();
 
 export function initializeWebSocket(server) {
-  wss = new WebSocketServer({ server, path: '/ws' });
+  wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    // The native app offers a "bearer" subprotocol (with the token) to carry
+    // auth. Accept it so the negotiation completes; browsers offer no
+    // subprotocol and skip this entirely, so they're unaffected.
+    handleProtocols: (protocols) => (protocols.has('bearer') ? 'bearer' : false)
+  });
 
   wss.on('connection', (ws, request) => {
     // Authenticate WebSocket connection

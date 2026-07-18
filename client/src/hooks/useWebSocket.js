@@ -1,6 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { isNative, getServerUrl, getToken } from '../lib/native';
 
+// Web: same-origin ws(s)://host/ws. Native overrides this per-connection with
+// the controller's Tailscale address (see resolveWsTarget).
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+
+// Resolve the WebSocket URL + subprotocols. On native we point at the remote
+// server and carry the auth token as a "bearer" subprotocol.
+async function resolveWsTarget() {
+  if (!isNative()) return { url: WS_URL, protocols: undefined };
+  const base = await getServerUrl();
+  const url = base.replace(/^http/, 'ws') + '/ws';
+  const token = await getToken();
+  return { url, protocols: token ? ['bearer', token] : undefined };
+}
 
 export function useWebSocket(onMessage) {
   const [connected, setConnected] = useState(false);
@@ -18,7 +31,7 @@ export function useWebSocket(onMessage) {
     shouldConnectRef.current = !!onMessage;
   }, [onMessage]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     // Don't connect if no message handler (not authenticated)
     if (!shouldConnectRef.current) {
       return;
@@ -29,7 +42,10 @@ export function useWebSocket(onMessage) {
     }
 
     try {
-      wsRef.current = new WebSocket(WS_URL);
+      const { url, protocols } = await resolveWsTarget();
+      // Between the await and here the effect may have torn down; bail if so.
+      if (!shouldConnectRef.current) return;
+      wsRef.current = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       wsRef.current.onopen = () => {
         console.log('[WS] Connected');
