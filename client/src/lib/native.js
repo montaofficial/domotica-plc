@@ -10,10 +10,10 @@ export function isNative() {
 }
 
 // Where the KNX controller lives, as seen from a phone that is NOT on the office
-// LAN. Filled in once Tailscale is up (e.g. https://fortitude-domotica.<tailnet>.ts.net).
-// Can be overridden at runtime and stored, so the app doesn't need a rebuild to
-// point at a different address.
-export const DEFAULT_NATIVE_SERVER_URL = 'https://REPLACE-WITH-TAILSCALE-URL.ts.net';
+// LAN: its Tailscale HTTPS address (reachable from any device signed into the
+// fortitude.digital tailnet). Can be overridden at runtime and stored, so the
+// app doesn't need a rebuild to point at a different address.
+export const DEFAULT_NATIVE_SERVER_URL = 'https://fortitude-domotica.taile140d5.ts.net';
 
 const SERVER_KEY = 'server_url';
 const TOKEN_KEY = 'auth_token';
