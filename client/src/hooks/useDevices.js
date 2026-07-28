@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomsApi, groupAddressesApi, controlApi } from '../api';
+import { isNative } from '../lib/native';
+
+// On native there's no WebSocket (blocked by Cloudflare Access), so these
+// queries poll to stay fresh. On web, live updates arrive over WebSocket and
+// no polling is needed.
+const NATIVE_POLL_MS = isNative() ? 5000 : false;
 
 // Rooms hooks
 export function useRooms() {
   return useQuery({
     queryKey: ['rooms'],
-    queryFn: roomsApi.getAll
+    queryFn: roomsApi.getAll,
+    refetchInterval: NATIVE_POLL_MS
   });
 }
 
@@ -61,7 +68,8 @@ export function useGroupAddresses(params = {}) {
 export function useConfiguredDevices() {
   return useQuery({
     queryKey: ['groupAddresses', 'configured'],
-    queryFn: groupAddressesApi.getConfigured
+    queryFn: groupAddressesApi.getConfigured,
+    refetchInterval: NATIVE_POLL_MS
   });
 }
 

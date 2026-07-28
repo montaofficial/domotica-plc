@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { authApi, setAuthErrorHandler } from './api';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { authApi, setAuthErrorHandler, statusApi } from './api';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -11,6 +11,7 @@ import Discovery from './pages/Discovery';
 import Topology from './pages/Topology';
 import useWebSocket from './hooks/useWebSocket';
 import { pushTelegram } from './lib/telegramFeed';
+import { isNative } from './lib/native';
 import { Loader2 } from 'lucide-react';
 
 const MAX_DETECTIONS_CACHED = 200;
@@ -143,10 +144,25 @@ function App() {
     }
   }, [scheduleInvalidate]);
 
-  // Only connect WebSocket when authenticated
-  const { connected, knxStatus } = useWebSocket(
-    user ? handleWebSocketMessage : null
+  // WebSocket on WEB only. On native (Capacitor) the WKWebView WebSocket API
+  // can't send the CF-Access headers, so Cloudflare Access blocks the /ws
+  // handshake — we poll instead (see below), which keeps the app fresh without
+  // draining the battery on retries.
+  const { connected: wsConnected, knxStatus: wsKnxStatus } = useWebSocket(
+    user && !isNative() ? handleWebSocketMessage : null
   );
+
+  // Native: poll /api/status for the gateway/health indicator and let the data
+  // queries refetch on their own interval (see useDevices).
+  const nativeStatus = useQuery({
+    queryKey: ['status'],
+    queryFn: statusApi.get,
+    enabled: !!user && isNative(),
+    refetchInterval: 8000
+  });
+
+  const connected = isNative() ? (!!nativeStatus.data && !nativeStatus.isError) : wsConnected;
+  const knxStatus = isNative() ? (nativeStatus.data?.knx || null) : wsKnxStatus;
 
   // Show loading while checking auth
   if (!authChecked) {

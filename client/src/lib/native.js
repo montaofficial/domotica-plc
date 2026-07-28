@@ -9,11 +9,28 @@ export function isNative() {
   return Capacitor?.isNativePlatform?.() === true;
 }
 
-// Where the KNX controller lives, as seen from a phone that is NOT on the office
-// LAN: its Tailscale HTTPS address (reachable from any device signed into the
-// fortitude.digital tailnet). Can be overridden at runtime and stored, so the
-// app doesn't need a rebuild to point at a different address.
-export const DEFAULT_NATIVE_SERVER_URL = 'https://fortitude-domotica.taile140d5.ts.net';
+// Where the KNX controller lives, as seen from any phone on the internet: its
+// public Cloudflare address, behind Cloudflare Zero Trust Access. Can be
+// overridden at runtime and stored, so the app doesn't need a rebuild to point
+// at a different address.
+export const DEFAULT_NATIVE_SERVER_URL = 'https://domotica.fortitude-dev.com';
+
+// Cloudflare Access service token (native only). Lets the app pass the Zero
+// Trust gate silently, without the interactive email login. Injected at build
+// time via Vite env (client/.env.local on the build machine) so the secret is
+// NEVER committed and never ends up in the public web build.
+const CF_CLIENT_ID = import.meta.env?.VITE_CF_ACCESS_CLIENT_ID || '';
+const CF_CLIENT_SECRET = import.meta.env?.VITE_CF_ACCESS_CLIENT_SECRET || '';
+
+// Headers that carry the service token past Cloudflare Access. Empty on web
+// (the browser passes Access via the interactive login + cookie instead).
+export function cfAccessHeaders() {
+  if (!isNative() || !CF_CLIENT_ID || !CF_CLIENT_SECRET) return {};
+  return {
+    'CF-Access-Client-Id': CF_CLIENT_ID,
+    'CF-Access-Client-Secret': CF_CLIENT_SECRET,
+  };
+}
 
 const SERVER_KEY = 'server_url';
 const TOKEN_KEY = 'auth_token';

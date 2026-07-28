@@ -1,4 +1,4 @@
-import { isNative, getServerUrl, getToken, setToken } from '../lib/native';
+import { isNative, getServerUrl, getToken, setToken, cfAccessHeaders } from '../lib/native';
 
 const API_BASE = '/api';
 
@@ -30,6 +30,7 @@ async function request(endpoint, options = {}) {
     ...restOptions,
     headers: {
       'Content-Type': 'application/json',
+      ...cfAccessHeaders(), // native: pass the Cloudflare Access gate (no-op on web)
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...optHeaders
     }
