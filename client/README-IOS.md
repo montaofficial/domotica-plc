@@ -63,8 +63,19 @@ build è quindi più lenta, le successive usano la cache.
 
 ## 4. Firma e distribuisci su TestFlight
 
-Il progetto usa **automatic signing** con team `G46BS9323G` (ALEXANDRU MARCIUC) e
-bundle id `digital.fortitude.domotica`, già impostati in `project.pbxproj`.
+Team `G46BS9323G` (ALEXANDRU MARCIUC), bundle id `digital.fortitude.domotica`.
+La firma è configurata in `project.pbxproj` in modo **asimmetrico**:
+
+- **Debug** → automatic signing, per girare sull'iPhone collegato senza pensarci.
+- **Release** → **manual signing** con il profilo App Store `Fortitude Domotica
+  AppStore` e identity `Apple Distribution`.
+
+Il Release è manuale per un motivo preciso: con automatic signing `xcodebuild
+archive` pretende un profilo **Development**, che richiede almeno un device
+registrato nel team. Se il team non ne ha, l'archive muore con *"Your team has no
+devices from which to generate a provisioning profile"*. I profili **App Store non
+hanno questo vincolo**, quindi la strada manuale è anche l'unica che funziona su
+una macchina di CI senza device collegati.
 
 ### Prerequisiti una tantum
 
@@ -78,58 +89,43 @@ bundle id `digital.fortitude.domotica`, già impostati in `project.pbxproj`.
    passaggio **va fatto dal sito**: l'API di App Store Connect non espone la
    creazione di nuove app. Senza il record, l'upload fallisce con
    *"No suitable application records were found"*.
+3. **Bundle id e provisioning profile** — già fatti, restano validi finché il
+   certificato di distribuzione non scade (**2027-07-27**). Il bundle id è
+   registrato nel portale, e il profilo App Store `Fortitude Domotica AppStore` è
+   installato in `~/Library/Developer/Xcode/UserData/Provisioning Profiles/`.
+   Su un Mac nuovo servono il certificato di distribuzione nel portachiavi e quel
+   profilo: si riscaricano da *Certificates, Identifiers & Profiles*, oppure si
+   ricrea il profilo via API (`POST /v1/profiles`, `profileType` `IOS_APP_STORE`).
 
 ### Percorso da terminale (nessun passaggio in Xcode)
 
 ```bash
 cd client/ios/App
 
-KEY_ID=XXXXXXXXXX
-ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-P8=~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
-
-# Archive. Con --allowProvisioningUpdates + la chiave API, Xcode registra da solo
-# il bundle id nel portale e genera il provisioning profile se mancano.
+# Archive. Con manual signing NON servono i flag -authenticationKey* ne'
+# -allowProvisioningUpdates: il profilo e' gia' referenziato dal progetto.
 xcodebuild -scheme App -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath build/App.xcarchive \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$P8" \
-  -authenticationKeyID "$KEY_ID" \
-  -authenticationKeyIssuerID "$ISSUER_ID" \
   archive
 
-# Export dell'IPA
+# Export dell'IPA (ExportOptions.plist e' versionato accanto a App.xcodeproj)
 xcodebuild -exportArchive \
   -archivePath build/App.xcarchive \
   -exportPath build/ipa \
-  -exportOptionsPlist ExportOptions.plist \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$P8" \
-  -authenticationKeyID "$KEY_ID" \
-  -authenticationKeyIssuerID "$ISSUER_ID"
+  -exportOptionsPlist ExportOptions.plist
 
 # Upload su TestFlight
 xcrun altool --upload-app -f build/ipa/App.ipa -t ios \
-  --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+  --apiKey XXXXXXXXXX --apiIssuer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-`ExportOptions.plist` (accanto a `App.xcodeproj`):
+Archive ed export sono verificati sul campo e producono `build/ipa/App.ipa`.
+L'upload richiede che il record dell'app esista (vedi prerequisiti).
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>app-store-connect</string>
-  <key>teamID</key>
-  <string>G46BS9323G</string>
-  <key>uploadSymbols</key>
-  <true/>
-</dict>
-</plist>
-```
+`ios/App/ExportOptions.plist` è versionato nel repo: `method` `app-store-connect`,
+`signingStyle` `manual`, e la mappa `provisioningProfiles` che lega
+`digital.fortitude.domotica` al profilo `Fortitude Domotica AppStore`.
 
 **Ogni upload richiede un build number nuovo.** App Store Connect rifiuta un build
 già caricato per la stessa versione. Prima di ri-archiviare, incrementa
