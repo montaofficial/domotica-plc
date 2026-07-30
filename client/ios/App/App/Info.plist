@@ -22,6 +22,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- L'app usa solo HTTPS/TLS fornito dal sistema (chiamate API + header
+	     Cloudflare Access): rientra nell'esenzione per la crittografia standard.
+	     Senza questa chiave App Store Connect blocca ogni build con
+	     "Missing Compliance". -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
