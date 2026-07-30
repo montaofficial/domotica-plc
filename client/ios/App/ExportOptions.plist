@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>app-store-connect</string>
+  <key>teamID</key>
+  <string>G46BS9323G</string>
+  <!-- Manual signing: l'automatic signing chiederebbe un profilo Development,
+       che richiede almeno un device registrato nel team. Il profilo App Store
+       e' stato creato via API e non ha questo vincolo. -->
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>digital.fortitude.domotica</key>
+    <string>Fortitude Domotica AppStore</string>
+  </dict>
+  <key>uploadSymbols</key>
+  <true/>
+</dict>
+</plist>
