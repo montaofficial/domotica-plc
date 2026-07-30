@@ -120,8 +120,9 @@ xcrun altool --upload-app -f build/ipa/App.ipa -t ios \
   --apiKey XXXXXXXXXX --apiIssuer xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-Archive ed export sono verificati sul campo e producono `build/ipa/App.ipa`.
-L'upload richiede che il record dell'app esista (vedi prerequisiti).
+Tutti e tre i comandi sono verificati sul campo: archive ed export producono
+`build/ipa/App.ipa` (~2.7 MB), e l'upload consegna la build a TestFlight. Dopo
+l'upload la build resta in *Processing* per qualche minuto prima di comparire.
 
 `ios/App/ExportOptions.plist` è versionato nel repo: `method` `app-store-connect`,
 `signingStyle` `manual`, e la mappa `provisioningProfiles` che lega
