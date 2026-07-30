@@ -189,6 +189,36 @@ aggiornamento di dipendenze, controlla che la risoluzione sia ancora una 5.x:
 npm ls typescript        # deve mostrare typescript@5.x, non 7.x
 ```
 
+### `Missing Compliance` su App Store Connect (App Encryption Documentation)
+
+Dopo l'upload la build compare in TestFlight ma non è distribuibile: App Store
+Connect chiede la dichiarazione sull'uso della crittografia.
+
+Causa: senza una dichiarazione esplicita, Apple lascia il campo
+`usesNonExemptEncryption` a `null` e blocca la build. L'app usa solo HTTPS/TLS
+fornito dal sistema (chiamate API + header Cloudflare Access), senza crittografia
+proprietaria, quindi **rientra nell'esenzione**.
+
+Per le build future è già risolto: `App/Info.plist` dichiara
+
+```xml
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+```
+
+Per una build **già caricata** quella chiave non serve a niente — va dichiarata
+sulla build stessa, dal sito oppure via API:
+
+```bash
+# id della build: e' il Delivery UUID stampato da altool a fine upload
+node asc.mjs PATCH /v1/builds/<BUILD_ID> \
+  '{"data":{"type":"builds","id":"<BUILD_ID>",
+    "attributes":{"usesNonExemptEncryption":false}}}'
+```
+
+Attenzione: è una dichiarazione legale ad Apple. Vale finché l'app si limita alla
+crittografia standard del sistema — se aggiungi cifratura proprietaria, va rivista.
+
 ## Note
 
 - **Aggiornamenti in tempo reale**: sul web arrivano via WebSocket; sull'app nativa
