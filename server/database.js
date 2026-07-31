@@ -127,6 +127,16 @@ function initializeDatabase() {
       source TEXT,                    -- 'heuristic' | 'agent' | 'user'
       updated_at TEXT
     );
+
+    -- App login credentials. Single row (id=1). Password is bcrypt-hashed,
+    -- never stored in clear. Seeded from AUTH_USERNAME/AUTH_PASSWORD on first
+    -- run (see seedCredentialsFromEnv in auth.js), then editable from the app.
+    CREATE TABLE IF NOT EXISTS app_credentials (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      username TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      updated_at TEXT
+    );
   `);
 
   // Insert default room if none exist
@@ -138,6 +148,28 @@ function initializeDatabase() {
     `).run('default', 'Uncategorized', 'home', 999);
   }
 }
+
+// App login credentials (single row, id=1). Password is bcrypt-hashed upstream
+// in auth.js — this module only reads/writes the row, it never hashes.
+export const credentialsDb = {
+  get() {
+    return db.prepare('SELECT username, password_hash FROM app_credentials WHERE id = 1').get();
+  },
+  seed(username, passwordHash) {
+    db.prepare(`
+      INSERT OR IGNORE INTO app_credentials (id, username, password_hash, updated_at)
+      VALUES (1, ?, ?, ?)
+    `).run(username, passwordHash, new Date().toISOString());
+  },
+  setPasswordHash(passwordHash) {
+    db.prepare('UPDATE app_credentials SET password_hash = ?, updated_at = ? WHERE id = 1')
+      .run(passwordHash, new Date().toISOString());
+  },
+  setUsername(username) {
+    db.prepare('UPDATE app_credentials SET username = ?, updated_at = ? WHERE id = 1')
+      .run(username, new Date().toISOString());
+  }
+};
 
 // Room operations
 export const roomsDb = {

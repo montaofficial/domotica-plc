@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { credentialsDb } from './database.js';
+
+const BCRYPT_ROUNDS = 12;
 
 const TOKEN_EXPIRY = '24h';
 const PLACEHOLDER_SECRETS = new Set([
@@ -59,19 +63,54 @@ function timingSafeStringEqual(a, b) {
   return crypto.timingSafeEqual(aPadded, bPadded) && aBuf.length === bBuf.length;
 }
 
-export function validateCredentials(username, password) {
-  const validUsername = process.env.AUTH_USERNAME || 'admin';
-  const validPassword = process.env.AUTH_PASSWORD;
+// One-time migration: on first run, copy the env credentials into the DB with
+// the password bcrypt-hashed. After this the DB is the source of truth and the
+// user can change username/password from the app. Idempotent (INSERT OR IGNORE).
+export function seedCredentialsFromEnv() {
+  if (credentialsDb.get()) return; // already seeded
+  const username = process.env.AUTH_USERNAME || 'admin';
+  const password = process.env.AUTH_PASSWORD;
+  if (!password) {
+    console.error('[Auth] AUTH_PASSWORD is not set - cannot seed login credentials.');
+    return;
+  }
+  credentialsDb.seed(username, bcrypt.hashSync(password, BCRYPT_ROUNDS));
+  console.log('[Auth] Seeded login credentials into the database from .env.');
+}
 
-  if (!validPassword) {
-    console.error('[Auth] AUTH_PASSWORD is not set - rejecting all logins.');
+export function getUsername() {
+  return credentialsDb.get()?.username || null;
+}
+
+// Verify a plaintext password against the stored bcrypt hash.
+export function verifyPassword(password) {
+  const row = credentialsDb.get();
+  if (!row) return false;
+  try {
+    return bcrypt.compareSync(String(password ?? ''), row.password_hash);
+  } catch {
     return false;
   }
+}
 
-  return (
-    timingSafeStringEqual(username, validUsername) &&
-    timingSafeStringEqual(password, validPassword)
-  );
+export function updatePassword(newPassword) {
+  credentialsDb.setPasswordHash(bcrypt.hashSync(String(newPassword), BCRYPT_ROUNDS));
+}
+
+export function updateUsername(newUsername) {
+  credentialsDb.setUsername(String(newUsername));
+}
+
+export function validateCredentials(username, password) {
+  const row = credentialsDb.get();
+  if (!row) {
+    console.error('[Auth] No credentials in DB - login rejected. Restart to seed from .env.');
+    return false;
+  }
+  // Username compared timing-safe; password via bcrypt (constant-time by design).
+  const userOk = timingSafeStringEqual(username, row.username);
+  const passOk = verifyPassword(password);
+  return userOk && passOk;
 }
 
 // Express middleware for protecting routes. Mounted at '/api' AFTER the

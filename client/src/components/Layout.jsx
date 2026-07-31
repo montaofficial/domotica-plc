@@ -10,7 +10,8 @@ import {
   Activity,
   LogOut,
   User,
-  Zap
+  Zap,
+  Settings as SettingsIcon
 } from 'lucide-react';
 
 const navItems = [
@@ -18,7 +19,8 @@ const navItems = [
   { to: '/devices', icon: LayoutGrid, label: 'Dispositivi' },
   { to: '/rooms', icon: Layers, label: 'Stanze' },
   { to: '/discovery', icon: Radio, label: 'Discovery' },
-  { to: '/topology', icon: Network, label: 'Topologia' }
+  { to: '/topology', icon: Network, label: 'Topologia' },
+  { to: '/settings', icon: SettingsIcon, label: 'Impostazioni' }
 ];
 
 function StatusDot({ ok, pulse = false }) {
