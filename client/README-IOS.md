@@ -219,6 +219,35 @@ node asc.mjs PATCH /v1/builds/<BUILD_ID> \
 Attenzione: è una dichiarazione legale ad Apple. Vale finché l'app si limita alla
 crittografia standard del sistema — se aggiungi cifratura proprietaria, va rivista.
 
+### Il login nell'app nativa fallisce (ma le credenziali sono giuste)
+
+Sintomo: sul telefono il login non passa, mentre le stesse credenziali funzionano
+via `curl` e sul web.
+
+Causa: l'app gira da `https://localhost` (WKWebView) e chiama il server
+cross-origin con header non-standard (`X-Native`, `CF-Access-*`). Il browser manda
+prima un **preflight CORS `OPTIONS`**, che **non può portare il service token**
+(i browser non allegano header custom al preflight). Cloudflare Access riceve un
+`OPTIONS` non autenticato e risponde **403**: il browser non ottiene il via libera
+e la richiesta vera non parte mai. `curl` non fa preflight, per questo lì funziona.
+Questo rompe *ogni* chiamata API dell'app, non solo il login.
+
+Fix (in `capacitor.config.ts`): **CapacitorHttp abilitato**. Instrada `fetch`/XHR
+attraverso lo stack HTTP nativo, che non è soggetto al CORS del browser — niente
+preflight, il service token viaggia sulla richiesta vera e Access la accetta.
+
+```ts
+plugins: {
+  CapacitorHttp: { enabled: true },
+},
+```
+
+Alternativa senza rebuild, se preferisci lasciare la palla a Cloudflare:
+configurare le **CORS settings** dell'applicazione Access (Zero Trust → Access →
+Applications → Domotica) perché risponda lei al preflight — origin
+`https://localhost`, tutti i metodi/header, allow credentials. Richiede un API
+token Cloudflare con permessi Access.
+
 ## Note
 
 - **Aggiornamenti in tempo reale**: sul web arrivano via WebSocket; sull'app nativa

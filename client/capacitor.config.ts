@@ -24,6 +24,15 @@ const config: CapacitorConfig = {
       backgroundColor: '#0d1220',
       showSpinner: false,
     },
+    // Route fetch/XHR through the native HTTP stack. Native requests are NOT
+    // subject to browser CORS, so the WKWebView no longer sends a preflight
+    // OPTIONS — which Cloudflare Access was rejecting (the preflight can't
+    // carry the service token, so Access 403'd it and the real request never
+    // fired). With this on, the CF-Access headers ride the actual request and
+    // Access lets it through. Web build is unaffected (plugin is iOS/native).
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
 };
 
