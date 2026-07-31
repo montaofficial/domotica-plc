@@ -181,11 +181,12 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
         <nav
           className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-dark-950/80 backdrop-blur-xl border-t border-dark-700/60 flex"
           style={{
-            // Keep the row clear of the home indicator AND of the screen's
-            // rounded corners, which otherwise clip the first/last tap targets.
+            // Real horizontal padding (not just safe-area, which is 0 in
+            // portrait) so the first/last items sit inside the screen's rounded
+            // corners instead of being clipped by them.
             paddingBottom: 'env(safe-area-inset-bottom)',
-            paddingLeft: 'env(safe-area-inset-left)',
-            paddingRight: 'env(safe-area-inset-right)'
+            paddingLeft: 'calc(env(safe-area-inset-left) + 12px)',
+            paddingRight: 'calc(env(safe-area-inset-right) + 12px)'
           }}
         >
           {navItems.map(({ to, icon: Icon, label }) => (
@@ -195,7 +196,7 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
               className={({ isActive }) =>
                 // min-h gives a comfortable ~56px tap target (Apple HIG ≥44px);
                 // the old py-2 made the bar too thin to hit reliably.
-                `relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-colors ${
+                `relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-colors ${
                   isActive ? 'text-primary-300' : 'text-dark-400'
                 }`
               }
@@ -206,7 +207,7 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
                     <span className="absolute top-0 w-8 h-0.5 rounded-full bg-primary-400" />
                   )}
                   <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium leading-none">{label}</span>
+                  <span className="text-[9px] font-medium leading-none whitespace-nowrap">{label}</span>
                 </>
               )}
             </NavLink>
