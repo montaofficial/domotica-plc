@@ -9,6 +9,7 @@ import Devices from './pages/Devices';
 import Rooms from './pages/Rooms';
 import Discovery from './pages/Discovery';
 import Topology from './pages/Topology';
+import Settings from './pages/Settings';
 import useWebSocket from './hooks/useWebSocket';
 import { pushTelegram } from './lib/telegramFeed';
 import { isNative } from './lib/native';
@@ -201,6 +202,7 @@ function App() {
             }
           />
           <Route path="/topology" element={<Topology />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

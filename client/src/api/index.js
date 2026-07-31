@@ -75,7 +75,24 @@ export const authApi = {
     if (isNative()) await setToken(null);
     return res;
   },
-  status: () => request('/auth/status')
+  status: () => request('/auth/status'),
+  changePassword: (currentPassword, newPassword) =>
+    request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+      ...(isNative() ? { headers: { 'X-Native': '1' } } : {})
+    }),
+  changeUsername: async (currentPassword, newUsername) => {
+    // Changing the username re-issues the token (the JWT embeds it). On native
+    // we store the fresh token so the session keeps working after the change.
+    const res = await request('/auth/change-username', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newUsername }),
+      ...(isNative() ? { headers: { 'X-Native': '1' } } : {})
+    });
+    if (isNative() && res?.token) await setToken(res.token);
+    return res;
+  }
 };
 
 // Rooms API

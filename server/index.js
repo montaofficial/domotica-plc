@@ -9,7 +9,7 @@ import { dirname, join } from 'path';
 import knxService from './knx-service.js';
 import learnEngine from './learn-engine.js';
 import { initializeWebSocket, getConnectedClientCount, closeWebSocket } from './websocket.js';
-import { authMiddleware } from './auth.js';
+import { authMiddleware, seedCredentialsFromEnv } from './auth.js';
 import authRouter from './routes/auth.js';
 import roomsRouter from './routes/rooms.js';
 import devicesRouter from './routes/devices.js';
@@ -120,6 +120,9 @@ app.use((err, req, res, next) => {
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
+
+// Seed login credentials into the DB from .env on first run (no-op afterwards).
+seedCredentialsFromEnv();
 
 // Initialize WebSocket (with auth)
 initializeWebSocket(server);
