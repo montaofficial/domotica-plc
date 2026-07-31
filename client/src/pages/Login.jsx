@@ -1,12 +1,48 @@
-import { useState } from 'react';
-import { Lock, User, Loader2, AlertCircle, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Lock, User, Loader2, AlertCircle, Zap, ScanFace } from 'lucide-react';
 import { authApi } from '../api';
+import { biometricAvailable, biometricEnabled, enableBiometric, loginWithBiometric } from '../lib/biometric';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Face ID state: whether the device supports it, whether the user already
+  // enabled it, and whether they want to enable it on this manual login.
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioEnabled, setBioEnabled] = useState(false);
+  const [rememberBio, setRememberBio] = useState(false);
+
+  const doBiometricLogin = useCallback(async () => {
+    setError('');
+    const creds = await loginWithBiometric();
+    if (!creds) return; // cancelled/failed — stay on the password form
+    setLoading(true);
+    try {
+      const result = await authApi.login(creds.username, creds.password);
+      onLogin(result.user);
+    } catch {
+      // Stored password no longer valid (e.g. it was changed): fall back.
+      setError('Accesso con Face ID non riuscito. Inserisci la password.');
+    } finally {
+      setLoading(false);
+    }
+  }, [onLogin]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [avail, enabled] = await Promise.all([biometricAvailable(), biometricEnabled()]);
+      if (cancelled) return;
+      setBioAvailable(avail);
+      setBioEnabled(avail && enabled);
+      // Auto-offer Face ID on launch when it's already set up.
+      if (avail && enabled) doBiometricLogin();
+    })();
+    return () => { cancelled = true; };
+  }, [doBiometricLogin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,6 +51,10 @@ function Login({ onLogin }) {
 
     try {
       const result = await authApi.login(username, password);
+      // Opted in to Face ID on this login: stash the credentials in the Keychain.
+      if (rememberBio && bioAvailable) {
+        try { await enableBiometric(username, password); } catch { /* non-fatal */ }
+      }
       onLogin(result.user);
     } catch (err) {
       setError(err.message === 'Invalid credentials'
@@ -51,6 +91,18 @@ function Login({ onLogin }) {
             </div>
           )}
 
+          {bioEnabled && (
+            <button
+              type="button"
+              onClick={doBiometricLogin}
+              disabled={loading}
+              className="btn-primary w-full flex items-center justify-center gap-2 mb-4 disabled:opacity-60"
+            >
+              <ScanFace className="w-5 h-5" />
+              Accedi con Face ID
+            </button>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Nome utente</label>
@@ -63,7 +115,6 @@ function Login({ onLogin }) {
                   className="input pl-10"
                   placeholder="Inserisci il nome utente"
                   required
-                  autoFocus
                   autoComplete="username"
                 />
               </div>
@@ -84,6 +135,19 @@ function Login({ onLogin }) {
                 />
               </div>
             </div>
+
+            {bioAvailable && !bioEnabled && (
+              <label className="flex items-center gap-2 text-sm text-dark-300 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberBio}
+                  onChange={e => setRememberBio(e.target.checked)}
+                  className="w-4 h-4 accent-primary-500"
+                />
+                <ScanFace className="w-4 h-4 text-dark-400" />
+                Abilita l'accesso con Face ID
+              </label>
+            )}
 
             <button
               type="submit"

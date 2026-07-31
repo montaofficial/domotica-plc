@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Lock, User, Loader2, AlertCircle, CheckCircle2, KeyRound, UserCog } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Lock, User, Loader2, AlertCircle, CheckCircle2, KeyRound, UserCog, ScanFace } from 'lucide-react';
 import { authApi } from '../api';
+import { biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } from '../lib/biometric';
 
 // Small reusable field with a leading icon, matching the Login styling.
 function Field({ icon: Icon, type, value, onChange, placeholder, autoComplete }) {
@@ -152,6 +153,93 @@ function ChangeUsernameCard() {
   );
 }
 
+function FaceIdCard() {
+  const [available, setAvailable] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [msg, setMsg] = useState({ kind: '', text: '' });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [a, e] = await Promise.all([biometricAvailable(), biometricEnabled()]);
+      if (!cancelled) { setAvailable(a); setEnabled(a && e); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!available) return null; // web, or no Face ID / Touch ID on the device
+
+  const enable = async (e) => {
+    e.preventDefault();
+    setMsg({ kind: '', text: '' });
+    setLoading(true);
+    try {
+      // Verify the credentials against the server before storing them, so we
+      // never save a wrong password into the Keychain.
+      await authApi.login(username, password);
+      await enableBiometric(username, password);
+      setEnabled(true);
+      setUsername(''); setPassword('');
+      setMsg({ kind: 'ok', text: 'Face ID attivato.' });
+    } catch (err) {
+      setMsg({
+        kind: 'err',
+        text: err.message === 'Invalid credentials'
+          ? 'Credenziali non valide.'
+          : (err.message || 'Impossibile attivare Face ID.')
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disable = async () => {
+    setLoading(true);
+    await disableBiometric();
+    setEnabled(false);
+    setMsg({ kind: 'ok', text: 'Face ID disattivato.' });
+    setLoading(false);
+  };
+
+  return (
+    <div className="card p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <ScanFace className="w-5 h-5 text-primary-400" />
+        <h2 className="text-lg font-semibold text-white">Accesso con Face ID</h2>
+      </div>
+      <Banner kind={msg.kind === 'ok' ? 'ok' : 'err'} text={msg.text} />
+      {enabled ? (
+        <div className="space-y-4">
+          <p className="text-sm text-dark-300 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-400" /> Face ID è attivo su questo dispositivo.
+          </p>
+          <button onClick={disable} disabled={loading} className="btn-secondary w-full flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Disattiva Face ID'}
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={enable} className="space-y-4">
+          <p className="text-sm text-dark-400">Conferma le credenziali per attivare l'accesso con Face ID.</p>
+          <div>
+            <label className="label">Nome utente</label>
+            <Field icon={User} type="text" value={username} onChange={setUsername} placeholder="Nome utente" autoComplete="username" />
+          </div>
+          <div>
+            <label className="label">Password</label>
+            <Field icon={Lock} type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete="current-password" />
+          </div>
+          <button type="submit" disabled={loading || !username || !password} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading ? <><Loader2 className="w-5 h-5 animate-spin" />Attivazione…</> : 'Attiva Face ID'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function Settings() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -159,6 +247,7 @@ function Settings() {
         <h1 className="font-display text-2xl font-bold text-white">Impostazioni</h1>
         <p className="text-sm text-dark-400 mt-1">Gestisci le credenziali di accesso.</p>
       </div>
+      <FaceIdCard />
       <ChangePasswordCard />
       <ChangeUsernameCard />
     </div>

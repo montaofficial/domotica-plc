@@ -21,13 +21,17 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>6</string>
 	<!-- L'app usa solo HTTPS/TLS fornito dal sistema (chiamate API + header
 	     Cloudflare Access): rientra nell'esenzione per la crittografia standard.
 	     Senza questa chiave App Store Connect blocca ogni build con
 	     "Missing Compliance". -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Required by iOS before the app may invoke Face ID; shown in the system
+	     prompt. Without it the app crashes on the first biometric call. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Usa Face ID per accedere rapidamente a Fortitude Domotica.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
