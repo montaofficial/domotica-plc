@@ -178,14 +178,22 @@ function Layout({ children, connected, knxStatus, user, onLogout }) {
         {/* Mobile bottom navigation */}
         <nav
           className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-dark-950/80 backdrop-blur-xl border-t border-dark-700/60 flex"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          style={{
+            // Keep the row clear of the home indicator AND of the screen's
+            // rounded corners, which otherwise clip the first/last tap targets.
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            paddingLeft: 'env(safe-area-inset-left)',
+            paddingRight: 'env(safe-area-inset-right)'
+          }}
         >
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `relative flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
+                // min-h gives a comfortable ~56px tap target (Apple HIG ≥44px);
+                // the old py-2 made the bar too thin to hit reliably.
+                `relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-colors ${
                   isActive ? 'text-primary-300' : 'text-dark-400'
                 }`
               }

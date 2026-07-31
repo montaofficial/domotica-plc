@@ -5,7 +5,17 @@ import { isNative } from '../lib/native';
 // On native there's no WebSocket (blocked by Cloudflare Access), so these
 // queries poll to stay fresh. On web, live updates arrive over WebSocket and
 // no polling is needed.
-const NATIVE_POLL_MS = isNative() ? 5000 : false;
+const NATIVE_POLL_MS = isNative() ? 2500 : false;
+
+// After a control command, native has no WebSocket to push the new state, so we
+// refetch the device list right away instead of waiting for the next poll (which
+// is what made the on/off icon lag by up to a full poll interval). Fired once
+// immediately and once after a short delay to also catch the KNX bus echo.
+function refreshDeviceStateNative(queryClient) {
+  if (!isNative()) return; // web gets the update over WebSocket
+  queryClient.invalidateQueries({ queryKey: ['groupAddresses'] });
+  setTimeout(() => queryClient.invalidateQueries({ queryKey: ['groupAddresses'] }), 700);
+}
 
 // Rooms hooks
 export function useRooms() {
@@ -114,23 +124,26 @@ export function useToggleDevice() {
 
   return useMutation({
     mutationFn: controlApi.toggle,
-    onSuccess: () => {
-      // Optimistically update will be handled via WebSocket
-    }
+    // Web updates over WebSocket; native has none, so pull the fresh state now.
+    onSuccess: () => refreshDeviceStateNative(queryClient)
   });
 }
 
 export function useControlDevice() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ address, value, dataType }) => controlApi.write(address, value, dataType)
+    mutationFn: ({ address, value, dataType }) => controlApi.write(address, value, dataType),
+    onSuccess: () => refreshDeviceStateNative(queryClient)
   });
 }
 
 // Momentary (pulse) devices: every press sends value=1, never a toggle — the
 // actuator reacts to the impulse itself, so alternating 0/1 would be wrong.
 export function usePulseDevice() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: controlApi.on
+    mutationFn: controlApi.on,
+    onSuccess: () => refreshDeviceStateNative(queryClient)
   });
 }
 
